@@ -1,0 +1,12 @@
+{
+  "workbench.colorCustomizations": {
+    // Cor da Barra de Título quando a janela está ativa
+    "titleBar.activeBackground": "#5f0279", // Um azul escuro e focado
+    // Cor do texto na Barra de Título quando ativa
+    "titleBar.activeForeground": "#ffffff",
+    // Cor da Barra de Atividades (ícones laterais) para combinar
+    "activityBar.background": "#380048",
+    // Cor de um possível separador entre a barra lateral e o editor
+    "sideBar.border": "#005a9e"
+  }
+}
