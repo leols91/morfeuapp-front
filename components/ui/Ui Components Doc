@@ -1,0 +1,206 @@
+Documentação da UI Library Interna - Reabilis
+
+Esta é a documentação dos componentes de UI padronizados utilizados no sistema Reabilis. Todos os componentes respeitam o tema dinâmico (cores e dark/light mode) e estão localizados em:
+
+@/components/ui
+
+
+⸻
+
+1. Input
+
+Campo de entrada com label superior, suporte a tema e foco estilizado.
+
+Importação
+
+import { Input } from '@/components/ui'
+
+Props
+
+Nome	Tipo	Obrigatório	Descrição
+label	string	Sim	Texto do label acima do input
+…props	InputHTMLAttributes<HTMLInputElement>	Não	Todos os atributos nativos
+
+Exemplo
+
+<Input
+  label="Nome"
+  type="text"
+  value={name}
+  onChange={(e) => setName(e.target.value)}
+/>
+
+
+⸻
+
+2. Select
+
+Componente de select baseado em react-select, com estilização customizada para tema e foco.
+
+Importação
+
+import { Select, Option } from '@/components/ui'
+
+Props
+
+Nome	Tipo	Obrigatório	Descrição
+label	string	Sim	Texto do label acima do select
+value	Option | null	Sim	Valor selecionado
+onChange	(opt: Option | null) => void	Sim	Callback ao selecionar valor
+options	Option[]	Sim	Lista de opções do select
+
+Exemplo
+
+const options = [
+  { value: 'roxo', label: 'Roxo' },
+  { value: 'azul', label: 'Azul' }
+]
+
+<Select
+  label="Cor"
+  value={selectedColor}
+  onChange={setSelectedColor}
+  options={options}
+/>
+
+
+⸻
+
+3. Textarea
+
+Campo de texto expandido com label superior, responsivo ao tema e foco.
+
+Importação
+
+import { Textarea } from '@/components/ui'
+
+Props
+
+Nome	Tipo	Obrigatório	Descrição
+label	string	Sim	Texto do label acima do textarea
+value	string	Sim	Conteúdo atual
+onChange	(event: React.ChangeEvent<HTMLTextAreaElement>) => void	Sim	Ao alterar o conteúdo
+
+Exemplo
+
+<Textarea
+  label="Observações"
+  value={observations}
+  onChange={(e) => setObservations(e.target.value)}
+/>
+
+
+⸻
+
+4. Switch
+
+Botão de toggle booleano, estilizado por tema.
+
+Importação
+
+import { Switch } from '@/components/ui'
+
+Props
+
+Nome	Tipo	Obrigatório	Descrição
+label	string	Sim	Texto ao lado do toggle
+checked	boolean	Sim	Estado atual
+onChange	(checked: boolean) => void	Sim	Callback ao alterar o estado
+
+Exemplo
+
+<Switch
+  label="Receber notificações"
+  checked={notificationsEnabled}
+  onChange={(value) => setNotificationsEnabled(value)}
+/>
+
+
+⸻
+
+5. Checkbox
+
+Campo de seleção único com label ao lado.
+
+Importação
+
+import { Checkbox } from '@/components/ui'
+
+Props
+
+Nome	Tipo	Obrigatório	Descrição
+label	string	Sim	Texto ao lado do checkbox
+…props	InputHTMLAttributes<HTMLInputElement>	Não	Atributos adicionais
+
+Exemplo
+
+<Checkbox
+  label="Aceito os termos"
+  checked={termsAccepted}
+  onChange={(e) => setTermsAccepted(e.target.checked)}
+/>
+
+
+⸻
+
+6. FileUpload
+
+Campo de upload com estilo do tema e borda reativa.
+
+Importação
+
+import { FileUpload } from '@/components/ui'
+
+Props
+
+Nome	Tipo	Obrigatório	Descrição
+label	string	Sim	Texto acima do input
+onChange	(file: File | null) => void	Sim	Callback ao selecionar arquivo
+
+Exemplo
+
+<FileUpload
+  label="Anexar documento"
+  onChange={(file) => console.log(file)}
+/>
+
+
+⸻
+
+7. FormGroup
+
+Grid responsiva para agrupar campos com 1 ou 2 colunas.
+
+Importação
+
+import { FormGroup } from '@/components/ui'
+
+Props
+
+Nome	Tipo	Obrigatório	Descrição
+columns	`1	2`	Não (default: 2)
+className	string	Não	Classe CSS adicional
+children	ReactNode	Sim	Campos filhos agrupados
+
+Exemplo
+
+<FormGroup columns={2}>
+  <Input label="Nome" ... />
+  <Input label="Email" ... />
+</FormGroup>
+
+
+⸻
+
+Observações
+	•	Todos os componentes suportam modo escuro.
+	•	A borda dos campos é reativa ao foco com a cor do tema.
+	•	Utiliza useThemeColor() para integrção dinâmica com o sistema.
+
+Se novos componentes forem criados, mantenha este padrão e adicione aqui neste arquivo.
+
+⸻
+
+Atualizado em: 6 de agosto de 2025
+
+Responsável: Leonardo Santos
