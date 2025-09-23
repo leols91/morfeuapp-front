@@ -1,6 +1,6 @@
 export const login = async (username: string, password: string) => {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -14,7 +14,7 @@ export const login = async (username: string, password: string) => {
 
     const data = await response.json()
 
-    localStorage.setItem('token', data.token)
+    localStorage.setItem('morfeu-token', data.token)
     localStorage.setItem('userId', data.id)
 
     return { success: true }

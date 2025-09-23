@@ -16,9 +16,3 @@ export const updateConfig = async (id: string, data: any) => {
   const res = await axios.put(`${API_URL}/${id}`, data)
   return res.data
 }
-
-export const updateTypeStock = (id: string, payload: {
-  id: string
-  config_name: 'type_stock'
-  config_value: 'unificado' | 'separado'
-}) => axios.put(`${API_URL}/configsis/typestock/${id}`, payload)

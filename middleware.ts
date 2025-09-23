@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export function middleware(req: NextRequest) {
-  const token = req.cookies.get('token')?.value
+  const token = req.cookies.get('morfeu-token')?.value
 
   // Liberar o acesso à página de login e arquivos públicos
   const publicPaths = ['/login', '/favicon.ico', '/_next', '/api']

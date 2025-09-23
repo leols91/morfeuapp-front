@@ -4,7 +4,7 @@ import Cookies from 'js-cookie'
 import { useRouter } from 'next/navigation'
 
 export function handleLogout(router: ReturnType<typeof useRouter>) {
-  Cookies.remove('token')
+  Cookies.remove('morfeu-token')
   localStorage.clear()
   router.push('/login')
 }

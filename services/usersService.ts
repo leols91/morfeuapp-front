@@ -1,8 +1,19 @@
-import axios from 'axios'
-const API = process.env.NEXT_PUBLIC_API_URL
+import api from './api';
 
-export const updateUserPassword = (id: string, payload: {
-  old_password: string
-  new_password: string
-  confirm_new_password: string
-}) => axios.put(`${API}/updatepassuser/${id}`, payload)
+interface UpdatePasswordPayload {
+  oldPassword: string;
+  newPassword: string;
+}
+
+// Busca os dados do usuário logado (perfil)
+export const getMe = async () => {
+  const response = await api.get('/users/me');
+  return response.data;
+};
+
+// Atualiza a senha do usuário logado
+export const updateUserPassword = async (payload: UpdatePasswordPayload) => {
+  const response = await api.patch('/users/me/password', payload);
+  return response.data;
+};
+

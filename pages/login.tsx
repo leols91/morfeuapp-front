@@ -1,6 +1,6 @@
 import React from 'react'
 import Image from 'next/image'
-import LoginForm from '@/components/auth/LoginForm'
+import LoginForm from '@/components/auth/loginForm'
 import illustration from '@/assets/images/login.png'
 
 const LoginPage = () => {
@@ -18,10 +18,10 @@ const LoginPage = () => {
               priority
             />
             <h2 className="text-2xl lg:text-3xl font-bold mb-4">
-              A forma mais fácil de gerenciar sua clínica!
+              A forma mais fácil de gerenciar sua pousada!
             </h2>
             <p className="text-sm lg:text-base text-white/80">
-              O sistema Reabilis proporciona controle geral sobre sua clínica ou lar terapêutico, de forma segura e eficiente. Que bom ter você conosco!
+              O sistema Morfeu proporciona controle geral sobre sua pousada ou hostel, de forma segura e eficiente. Que bom ter você conosco!
             </p>
           </div>
         </div>
@@ -31,7 +31,7 @@ const LoginPage = () => {
       <div className="flex flex-col justify-center items-center px-6 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold">Bem-vindo!</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">Bem-vindo ao MorfeuApp!</h1>
             <p className="text-sm text-gray-400 mt-2">
               Insira suas credenciais para acessar o sistema.
             </p>
@@ -39,7 +39,7 @@ const LoginPage = () => {
           <LoginForm />
           <p className="mt-6 text-xs text-center text-gray-500">
             Não tem uma conta?{' '}
-            <a href="#" className="text-reabilis-purple underline">Fale com a administração</a>
+            <a href="#" className="text-reabilis-purple underline">Clique Aqui</a>
           </p>
         </div>
       </div>

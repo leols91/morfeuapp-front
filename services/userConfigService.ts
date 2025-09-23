@@ -1,25 +1,15 @@
-// services/userConfigService.ts
-import api from './api'
+import api from './api';
 
-export const getUserConfigs = async (userId: string) => {
-  const response = await api.get(`/userconfigid/${userId}`)
-  return response.data
-}
+// Busca todas as configurações do usuário logado
+export const getUserConfigs = async () => {
+  const response = await api.get('/users/me/configs');
+  return response.data;
+};
 
-export const createUserConfig = async (payload: any) => {
-  const response = await api.post('/userconfig', payload)
-  return response.data
-}
-
-export const updateUserConfig = async (id: string, payload: any) => {
-  const response = await api.put(`/userconfig/${id}`, payload)
-  return response.data
-}
-
-export const updateOrCreateUserConfig = async (userId: string, payload: any) => {
-  const response = await api.post('/userconfig/updateorcreate', {
-    ...payload,
-    id_user: userId,
-  })
-  return response.data
-}
+// Salva (cria ou atualiza) uma configuração do usuário logado
+export const upsertUserConfig = async (
+  data: { userConfigName: string; userConfigValue: string }
+) => {
+  const response = await api.post('/users/me/configs', data);
+  return response.data;
+};

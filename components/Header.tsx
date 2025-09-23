@@ -1,56 +1,43 @@
-// components/Header.tsx
-'use client'
-import React, { useEffect, useState } from 'react'
-import axios from 'axios'
+'use client';
+import React, { useEffect, useState } from 'react';
+import { getMe } from '@/services/usersService'; // Usando nosso novo service
 
-interface HeaderProps { titlePage: string }
+interface HeaderProps {
+  titlePage: string;
+}
 
 const Header: React.FC<HeaderProps> = ({ titlePage }) => {
-  const [employeeName, setEmployeeName] = useState('')
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
-    // ① pinta rápido com cache (se existir)
-    if (typeof window !== 'undefined') {
-      const cachedName = localStorage.getItem('userFullName')
-      if (cachedName) setEmployeeName(cachedName)
-    }
-
-    // ② busca e atualiza cache
-    const fetchEmployeeName = async () => {
-      const userId = localStorage.getItem('userId')
-      if (!userId) return
+    const fetchUserName = async () => {
       try {
-        const { data } = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/useremployee/${userId}`)
-        const fullname = data?.employeefullname || 'Usuário'
-        const login = data?.login_user || ''
-
-        setEmployeeName(fullname)
-
-        // salva no cache para reuso (ConfigPage e outros)
-        localStorage.setItem('userFullName', fullname)
-        localStorage.setItem('userLogin', login)
+        const response = await getMe();
+        // O nome do usuário vem dentro de um objeto 'user' na nossa API
+        setUserName(response.user?.name || 'Usuário');
       } catch {
-        setEmployeeName('Usuário')
+        setUserName('Usuário'); // Fallback em caso de erro
       }
-    }
-    fetchEmployeeName()
-  }, [])
+    };
+    fetchUserName();
+  }, []);
 
   return (
     <div
       className="
         sticky top-0 z-40
-        bg-white/80 dark:bg-reabilis-gray/80 backdrop-blur
-        text-black dark:text-white
-        px-3 sm:px-4 py-2
+        bg-card/80 dark:bg-card/80 backdrop-blur
+        text-foreground
+        px-4 sm:px-6 py-3
+        border-b border-border
         flex items-center justify-between
-        [padding-top:env(safe-area-inset-top)]
       "
       role="banner"
     >
-      <h1 className="text-base sm:text-lg font-semibold truncate">{titlePage}</h1>
-      <p className="text-xs sm:text-sm whitespace-nowrap">Olá, {employeeName || 'Usuário'}</p>
+      <h1 className="text-lg font-semibold truncate">{titlePage}</h1>
+      <p className="text-sm">Olá, {userName}</p>
     </div>
-  )
-}
-export default Header
+  );
+};
+
+export default Header;

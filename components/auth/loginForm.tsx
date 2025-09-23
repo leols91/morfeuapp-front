@@ -18,7 +18,7 @@ const LoginForm = () => {
     setLoading(true)
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -27,7 +27,7 @@ const LoginForm = () => {
       if (!response.ok) throw new Error('Usuário ou senha inválidos.')
 
       const data = await response.json()
-      Cookies.set('token', data.token, { expires: 1 })
+      Cookies.set('morfeu-token', data.token, { expires: 1 })
       localStorage.setItem('userId', data.id)
       router.push('/')
     } catch (err) {
