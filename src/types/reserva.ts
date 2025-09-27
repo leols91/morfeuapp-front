@@ -89,3 +89,29 @@ export type CancelReservaPayload = {
   penalty?: number | null; // taxa/penalidade opcional
   notes?: string | null;
 };
+
+export type UpdateReservaDatesPayload = {
+  checkOut: string; // YYYY-MM-DD
+};
+
+export type ChangeAcomodacaoPayload = {
+  roomId?: string | null;
+  bedId?: string | null;
+  notes?: string | null;
+};
+
+export type FolioEntryUpdatePayload = {
+  id: string;
+  description?: string;
+  amount?: number; // + débito / - crédito
+};
+
+export type NewChargePayload =
+  | { kind: "product"; productId: string; qty: number; unitPrice: number; description?: string }
+  | { kind: "adjustment"; amount: number; description: string };
+
+export type ProductOption = {
+  id: string;
+  name: string;
+  price: number;
+};

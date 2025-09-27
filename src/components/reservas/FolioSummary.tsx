@@ -85,7 +85,7 @@ export function FolioPayments({ payments }: { payments: PaymentDTO[] }) {
                 <tr key={p.id} className="hover:bg-black/5 dark:hover:bg-white/5">
                   <Td>{format(parseISO(p.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</Td>
                   <Td>{p.method}</Td>
-                  <Td className="text-right">{formatBRL(p.amount)}</Td>
+                  <Td>{formatBRL(p.amount)}</Td>
                 </tr>
               ))}
               {payments.length === 0 && (

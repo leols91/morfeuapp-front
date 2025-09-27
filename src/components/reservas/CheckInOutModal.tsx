@@ -17,6 +17,12 @@ const schemaCheckOut = z.object({
   notes: z.string().optional(),
 });
 
+// 🔧 Shape comum para ambos os modos
+type CommonForm = {
+  arrivalTime?: string;
+  notes?: string;
+};
+
 type Props = {
   open: boolean;
   mode: Mode;
@@ -29,12 +35,12 @@ type Props = {
 };
 
 export function CheckInOutModal({ open, mode, onClose, onConfirm, hospede, periodo, acomodacao }: Props) {
-  const schema = mode === "checkin" ? schemaCheckIn : schemaCheckOut;
-  type FormData = z.infer<typeof schema>;
+  const resolver = zodResolver(mode === "checkin" ? schemaCheckIn : schemaCheckOut);
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: { arrivalTime: "", notes: "" } as any,
+  // ✅ Use um tipo comum que contempla ambos os campos
+  const form = useForm<CommonForm>({
+    resolver,
+    defaultValues: { arrivalTime: "", notes: "" },
   });
 
   const [saving, setSaving] = React.useState(false);
@@ -42,13 +48,25 @@ export function CheckInOutModal({ open, mode, onClose, onConfirm, hospede, perio
 
   if (!open) return null;
 
-  async function submit(values: FormData) {
+  async function submit(values: CommonForm) {
     setError(null);
     setSaving(true);
     try {
-      await onConfirm(values as any);
+      // Mapeia para o payload correto conforme o modo
+      if (mode === "checkin") {
+        const payload: CheckInPayload = {
+          arrivalTime: values.arrivalTime || undefined,
+          notes: values.notes || undefined,
+        };
+        await onConfirm(payload);
+      } else {
+        const payload: CheckOutPayload = {
+          notes: values.notes || undefined,
+        };
+        await onConfirm(payload);
+      }
       onClose();
-      form.reset();
+      form.reset({ arrivalTime: "", notes: "" });
     } catch (e: any) {
       setError(e?.response?.data?.message ?? "Falha na operação.");
     } finally {
