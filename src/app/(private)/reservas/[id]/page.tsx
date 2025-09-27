@@ -1,18 +1,18 @@
-// src/app/(private)/reservas/[id]/page.tsx
 "use client";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getReservaById, postCheckIn, postCheckOut, cancelReserva } from "@/services/reservas";
 import { ReservaHeader } from "@/components/reservas/ReservaHeader";
 import { ReservaActions } from "@/components/reservas/ReservaActions";
 import { FolioEntries, FolioPayments, FolioSummary } from "@/components/reservas/FolioSummary";
+import { CheckInOutModal } from "@/components/reservas/CheckInOutModal";
+import { CancelReservaModal } from "@/components/reservas/CancelReservaModal";
+import React from "react";
 import { Button } from "@/components/ui/Button";
-import Link from "next/link";
-import type { Route } from "next";
+import toast from "react-hot-toast";
 
 export default function ReservaDetalhePage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
   const qc = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
@@ -20,34 +20,45 @@ export default function ReservaDetalhePage() {
     queryFn: () => getReservaById(params.id),
   });
 
+  // estado dos modais
+  const [openCI, setOpenCI] = React.useState<false | "checkin" | "checkout">(false);
+  const [openCancel, setOpenCancel] = React.useState(false);
+
   const mCheckIn = useMutation({
-    mutationFn: () => postCheckIn(params.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["reserva", params.id] }),
+  mutationFn: (body: Parameters<typeof postCheckIn>[1]) => postCheckIn(params.id, body),
+  onSuccess: () => {
+    qc.invalidateQueries({ queryKey: ["reserva", params.id] });
+    toast.success("Check-in realizado com sucesso!");
+  },
+  onError: () => toast.error("Falha ao realizar check-in."),
   });
+
   const mCheckOut = useMutation({
-    mutationFn: () => postCheckOut(params.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["reserva", params.id] }),
+    mutationFn: (body: Parameters<typeof postCheckOut>[1]) => postCheckOut(params.id, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reserva", params.id] });
+      toast.success("Check-out realizado com sucesso!");
+    },
+    onError: () => toast.error("Falha ao realizar check-out."),
   });
+
   const mCancel = useMutation({
-    mutationFn: () => cancelReserva(params.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["reserva", params.id] }),
+    mutationFn: (body: Parameters<typeof cancelReserva>[1]) => cancelReserva(params.id, body!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reserva", params.id] });
+      toast.success("Reserva cancelada.");
+    },
+    onError: () => toast.error("Falha ao cancelar reserva."),
   });
 
   if (isLoading) return <div className="surface">Carregando reserva…</div>;
   if (isError || !data) return <div className="surface">Erro ao carregar a reserva.</div>;
 
+  const periodo = `${toBR(data.inicio)} — ${toBR(data.fim)}`;
+
   return (
     <div className="space-y-4">
-      {/* Toolbar topo */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Link href={"/reservas" as Route} className="text-brand-700 hover:underline dark:text-brand-300">← Voltar</Link>
-          <h2 className="text-xl font-semibold">Reserva {data.codigo ? `· ${data.codigo}` : ""}</h2>
-        </div>
-        <div className="text-sm opacity-70">Criada em {formatDateTime(data.criadoEm)}</div>
-      </div>
-
-      {/* Header + ações */}
+      {/* Header */}
       <ReservaHeader
         hospede={data.hospedeNome}
         inicio={data.inicio}
@@ -57,24 +68,21 @@ export default function ReservaDetalhePage() {
         saldo={data.folio.saldo}
       />
 
+      {/* Ações */}
       <ReservaActions
-        id={data.id}
         status={data.status}
-        onCheckIn={async () => { await mCheckIn.mutateAsync(); }}   // ⬅️ bloco + await
-        onCheckOut={async () => { await mCheckOut.mutateAsync(); }} // ⬅️ bloco + await
-        onCancel={async () => { await mCancel.mutateAsync(); }}     // ⬅️ bloco + await
+        onOpenCheckIn={() => setOpenCI("checkin")}
+        onOpenCheckOut={() => setOpenCI("checkout")}
+        onOpenCancel={() => setOpenCancel(true)}
       />
 
-      {/* Grade 2 colunas no desktop */}
+      {/* Grid principal */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Coluna principal */}
         <div className="md:col-span-2 space-y-4">
           <FolioSummary saldo={data.folio.saldo} />
           <FolioEntries entries={data.folio.entries} />
           <FolioPayments payments={data.folio.payments} />
         </div>
-
-        {/* Coluna lateral */}
         <aside className="space-y-4">
           <div className="surface-2">
             <h3 className="font-semibold mb-2">Hóspede</h3>
@@ -100,12 +108,39 @@ export default function ReservaDetalhePage() {
             </div>
           </div>
         </aside>
-      </div>
-    </div>
+        {/* Modal Check-in/out */}
+          <CheckInOutModal
+            open={!!openCI}
+            mode={openCI === "checkout" ? "checkout" : "checkin"}
+            onClose={() => setOpenCI(false)}
+            onConfirm={async (payload) => {
+              if (openCI === "checkout") await mCheckOut.mutateAsync(payload);
+              else await mCheckIn.mutateAsync(payload);
+            }}
+            hospede={data.hospedeNome}
+            periodo={periodo}
+            acomodacao={data.acomodacao}
+          />
+
+          {/* Modal Cancelamento */}
+          <CancelReservaModal
+            open={openCancel}
+            onClose={() => setOpenCancel(false)}
+            onConfirm={async (p) => { await mCancel.mutateAsync(p); }}
+            hospede={data.hospedeNome}
+            periodo={periodo}
+            acomodacao={data.acomodacao}
+          />
+        </div>
+      </div> 
   );
 }
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
   return d.toLocaleString("pt-BR");
+}
+
+function toBR(iso: string) {
+  return new Date(iso).toLocaleDateString("pt-BR");
 }

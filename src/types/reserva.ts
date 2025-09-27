@@ -38,3 +38,54 @@ export type ReservaDetailDTO = ReservaDTO & {
     payments: PaymentDTO[];
   };
 };
+
+export type CreateReservaInput = {
+  hospedeId: string;
+  checkIn: string;   // YYYY-MM-DD
+  checkOut: string;  // YYYY-MM-DD
+  canalId?: string | null;
+  roomId?: string | null;
+  bedId?: string | null;   // um dos dois: roomId OU bedId
+  observacoes?: string | null;
+};
+
+export type HospedeDTO = {
+  id: string;
+  nome: string;
+  documento?: string;
+  email?: string;
+  telefone?: string;
+};
+
+export type AcomodacaoOption = {
+  id: string;
+  label: string;      // "Quarto 101" ou "Beliche A — Cama 2"
+  kind: "room" | "bed";
+};
+
+export type SalesChannelDTO = {
+  id: string;
+  name: string;
+};
+
+export type CreateHospedeInput = {
+  nome: string;
+  documento?: string;
+  email?: string;
+  telefone?: string;
+};
+
+export type CheckInPayload = {
+  arrivalTime?: string; // "HH:mm"
+  notes?: string | null;
+};
+
+export type CheckOutPayload = {
+  notes?: string | null;
+};
+
+export type CancelReservaPayload = {
+  reason: "guest_request" | "no_show" | "overbooking" | "other";
+  penalty?: number | null; // taxa/penalidade opcional
+  notes?: string | null;
+};

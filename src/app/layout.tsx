@@ -4,7 +4,9 @@ import "./../styles/globals.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { AuthProvider } from "@/lib/auth";
-import { ThemeProvider } from "next-themes"; // +++
+import { ThemeProvider } from "next-themes";
+import { Toaster } from "react-hot-toast";
+
 
 export const metadata: Metadata = {
   title: "MorfeuApp",
@@ -19,6 +21,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>  {/* +++ */}
             <AuthProvider>
               {children}
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  className: "text-sm",
+                  success: { duration: 3000 },
+                  error: { duration: 4000 },
+                }}
+              />
             </AuthProvider>
           </ThemeProvider>
         </QueryClientProvider>
