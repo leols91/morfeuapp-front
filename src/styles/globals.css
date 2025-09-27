@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Light */
+:root {
+  --bg: 255 255 255;
+  --fg: 17 24 39;
+}
+
+/* Dark premium */
+.dark {
+  --bg: 11 18 32;     /* #0B1220 */
+  --fg: 229 231 235;  /* gray-200 */
+}
+
+html, body, #__next {
+  height: 100%;
+}
+
+body {
+  background-color: rgb(var(--bg));
+  color: rgb(var(--fg));
+}
+
+.container-page {
+  @apply p-4 md:p-6;
+}
+
+@layer components {
+  /* MESMA densidade do 2º zip */
+  .surface   { @apply rounded-2xl border p-6 shadow-soft border-gray-200 bg-white dark:border-white/10 dark:bg-[#0F172A]; }
+  .surface-2 { @apply rounded-2xl border p-4            border-gray-200 bg-white dark:border-white/10 dark:bg-[#111827]; }
+  .border-subtle { @apply border-gray-200 dark:border-white/10; }
+  .bg-app { @apply bg-white dark:bg-[#0B1220]; }
+}

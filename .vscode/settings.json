@@ -1,0 +1,22 @@
+{
+  "workbench.colorCustomizations": {
+    // Cor da Barra de Título quando a janela está ativa
+    "titleBar.activeBackground": "#560296", // Um azul escuro e focado
+    // Cor do texto na Barra de Título quando ativa
+    "titleBar.activeForeground": "#ffffff",
+    // Cor da Barra de Atividades (ícones laterais) para combinar
+    "activityBar.background": "#6e01c2",
+    // Cor de um possível separador entre a barra lateral e o editor
+    "sideBar.border": "#005a9e",
+    // Ativa a formatação ao salvar um arquivo
+    "editor.formatOnSave": true,
+
+    // Define o Prettier como formatador padrão para evitar conflitos
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+    // Ativa a correção automática do ESLint ao salvar
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    }
+  }
+}
