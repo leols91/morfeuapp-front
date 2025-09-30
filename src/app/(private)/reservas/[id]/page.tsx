@@ -16,6 +16,7 @@ import {
   listAcomodacoes,
   listProducts,
   listServices,
+  addPayment, // ✅ service para pagamento
 } from "@/services/reservas";
 import type { FolioEntry } from "@/types/reserva";
 import { ReservaHeader } from "@/components/reservas/ReservaHeader";
@@ -35,6 +36,7 @@ import { ReservaToolbar } from "@/components/reservas/ReservaToolbar";
 import { FolioEntriesTable } from "@/components/reservas/FolioEntriesTable";
 import { ReservaRightColumn } from "@/components/reservas/ReservaRightColumn";
 import { GuestProfileModal } from "@/components/reservas/GuestProfileModal";
+import { AddPaymentModal } from "@/components/reservas/AddPaymentModal"; // ✅ novo modal
 
 export default function ReservaDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -56,6 +58,7 @@ export default function ReservaDetalhePage() {
   const [entryEditing, setEntryEditing] = React.useState<FolioEntry | null>(null);
   const [entryViewing, setEntryViewing] = React.useState<FolioEntry | null>(null);
   const [openGuest, setOpenGuest] = React.useState(false);
+  const [openAddPayment, setOpenAddPayment] = React.useState(false); // ✅ novo estado
 
   const acomQ = useQuery({ queryKey: ["acomodacoes"], queryFn: listAcomodacoes });
   const prodQ = useQuery({ queryKey: ["products"], queryFn: listProducts });
@@ -101,6 +104,11 @@ export default function ReservaDetalhePage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["reserva", params.id] }); toast.success("Lançamento excluído."); },
     onError: () => toast.error("Falha ao excluir lançamento."),
   });
+  const mAddPayment = useMutation({ // ✅ mutation para pagamento
+    mutationFn: (payload: Parameters<typeof addPayment>[1]) => addPayment(params.id, payload),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["reserva", params.id] }); toast.success("Pagamento lançado."); },
+    onError: () => toast.error("Falha ao lançar pagamento."),
+  });
 
   if (isLoading) return <div className="surface">Carregando reserva…</div>;
   if (isError || !data) return <div className="surface">Erro ao carregar a reserva.</div>;
@@ -129,6 +137,7 @@ export default function ReservaDetalhePage() {
         onOpenEditDates={() => setOpenEditDates(true)}
         onOpenChangeAcom={() => setOpenChangeAcom(true)}
         onOpenAddCharge={() => setOpenAddCharge(true)}
+        onOpenAddPayment={() => setOpenAddPayment(true)} // ✅ botão funcionando
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -211,7 +220,6 @@ export default function ReservaDetalhePage() {
         onClose={() => setOpenViewEntry(false)}
         entry={entryViewing}
       />
-
       <GuestProfileModal
         open={openGuest}
         onClose={() => setOpenGuest(false)}
@@ -230,6 +238,11 @@ export default function ReservaDetalhePage() {
           criadoEm: data.criadoEm,
           atualizadoEm: data.atualizadoEm ?? null,
         }}
+      />
+      <AddPaymentModal
+        open={openAddPayment}
+        onClose={() => setOpenAddPayment(false)}
+        onConfirm={async (payload) => { await mAddPayment.mutateAsync(payload); }}
       />
     </div>
   );

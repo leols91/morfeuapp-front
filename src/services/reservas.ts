@@ -233,3 +233,20 @@ export async function listServices(): Promise<ServiceOption[]> {
     { id: "toalha_extra", name: "Toalha extra", price: 8 },
   ];
 }
+
+// Tipagem do pagamento novo
+export type NewPaymentPayload = {
+  method: string;
+  amount: number;
+  note?: string;
+};
+
+// Folio: criar pagamento (não fecha folio automaticamente)
+export async function addPayment(reservaId: string, payload: NewPaymentPayload) {
+  // Exemplo real:
+  // await api.post(`/reservas/${reservaId}/folio/payments`, payload);
+  // return { ok: true, paymentId: "py_..." };
+
+  // MOCK
+  return { ok: true, paymentId: "py_" + Math.random().toString(36).slice(2, 8) };
+}
