@@ -1,13 +1,12 @@
 // src/components/reservas/ChangeAcomodacaoModal.tsx
 "use client";
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import type { AcomodacaoOption } from "@/types/reserva";
-
-// 🔧 kit de form padronizado
 import { Field, Select, Textarea } from "@/components/ui/form/Field";
 
 type Props = {
@@ -18,14 +17,19 @@ type Props = {
   currentLabel?: string;
 };
 
-// validação (alvo obrigatório; observações opcionais)
 const schema = z.object({
   alvo: z.string().min(1, "Selecione uma acomodação"),
   notes: z.string().optional(),
 });
 type FormData = z.infer<typeof schema>;
 
-export function ChangeAcomodacaoModal({ open, onClose, onConfirm, options, currentLabel }: Props) {
+export function ChangeAcomodacaoModal({
+  open,
+  onClose,
+  onConfirm,
+  options,
+  currentLabel,
+}: Props) {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { alvo: "", notes: "" },
@@ -34,12 +38,24 @@ export function ChangeAcomodacaoModal({ open, onClose, onConfirm, options, curre
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // reseta o formulário sempre que o modal abrir
+  // reset ao abrir
   React.useEffect(() => {
     if (open) form.reset({ alvo: "", notes: "" });
   }, [open, form]);
 
-  if (!open) return null;
+  // ESC fecha
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  // portal apenas no client
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+
+  if (!open || !mounted) return null;
 
   async function submit(v: FormData) {
     setError(null);
@@ -59,14 +75,24 @@ export function ChangeAcomodacaoModal({ open, onClose, onConfirm, options, curre
     }
   }
 
-  return (
-    <>
-      {/* backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose} />
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
 
-      {/* modal */}
-      <div className="fixed inset-0 z-50 grid place-items-center p-4">
-        <div className="w-full max-w-xl rounded-2xl border-subtle border bg-white dark:bg-[#0F172A] shadow-soft">
+  const node = (
+    <div
+      className="fixed inset-0 z-[100000]"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}  // clique fora fecha
+    >
+      {/* backdrop com blur (com fallback) cobrindo 100% */}
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px] supports-[backdrop-filter]:bg-black/35" />
+
+      {/* container do modal */}
+      <div className="absolute inset-0 overflow-y-auto grid place-items-center p-4">
+        <div
+          onClick={stop}
+          className="w-full max-w-xl rounded-2xl border-subtle border bg-white dark:bg-[#0F172A] shadow-soft"
+        >
           {/* header */}
           <div className="px-4 py-3 md:px-6 md:py-4 border-b border-subtle">
             <h3 className="text-lg font-semibold">Trocar acomodação</h3>
@@ -113,6 +139,8 @@ export function ChangeAcomodacaoModal({ open, onClose, onConfirm, options, curre
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
+
+  return createPortal(node, document.body);
 }

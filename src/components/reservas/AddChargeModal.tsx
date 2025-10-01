@@ -1,6 +1,7 @@
 // src/components/reservas/AddChargeModal.tsx
 "use client";
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { z } from "zod";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -68,7 +69,6 @@ const schema = z.discriminatedUnion("kind", [
   }
 });
 
-// Use o TIPO DE ENTRADA para aceitar NaN vindos do RHF
 type FormData = z.input<typeof schema>;
 
 export function AddChargeModal({ open, onClose, onConfirm, products, services }: Props) {
@@ -107,7 +107,7 @@ export function AddChargeModal({ open, onClose, onConfirm, products, services }:
         serviceId: "",
         qty: 1,
         unitPrice: Number.NaN,
-        discount: Number.NaN,
+      discount: Number.NaN,
         description: "",
       } as any);
       setError(null);
@@ -131,19 +131,29 @@ export function AddChargeModal({ open, onClose, onConfirm, products, services }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, productId, serviceId]);
 
-  if (!open) return null;
+  // ESC para fechar
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  // Portal apenas no client
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  if (!open || !mounted) return null;
 
   // Cálculo do total: ((price - discount) ↘ 0) * qty
   const base   = Number.isNaN(unitPrice as any) ? 0 : Number(unitPrice);
   const disc   = Number.isNaN(discount as any) ? 0 : Number(discount);
-  const effPU  = Math.max(0, base - disc);   // preço por unidade efetivo
+  const effPU  = Math.max(0, base - disc);
   const total  = effPU * (qty || 0);
 
   async function submit(v: FormData) {
     setError(null);
     setSaving(true);
     try {
-      // aplica desconto no unitPrice enviado ao backend
       const basePrice   = Number.isNaN(v.unitPrice as any) ? 0 : Number(v.unitPrice);
       const perUnitDisc = Number.isNaN(v.discount as any) ? 0 : Number(v.discount);
       const finalUnit   = Math.max(0, basePrice - perUnitDisc);
@@ -175,14 +185,24 @@ export function AddChargeModal({ open, onClose, onConfirm, products, services }:
     }
   }
 
-  return (
-    <>
-      {/* backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose} />
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
 
-      {/* modal */}
-      <div className="fixed inset-0 z-50 grid place-items-center p-4">
-        <div className="w-full max-w-xl rounded-2xl border-subtle border bg-white dark:bg-[#0F172A] shadow-soft">
+  const node = (
+    <div
+      className="fixed inset-0 z-[100000]"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}    // clique fora fecha
+    >
+      {/* backdrop com blur (fallback pronto) */}
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px] supports-[backdrop-filter]:bg-black/35" />
+
+      {/* container do modal */}
+      <div className="absolute inset-0 overflow-y-auto grid place-items-center p-4">
+        <div
+          onClick={stop}
+          className="w-full max-w-xl rounded-2xl border-subtle border bg-white dark:bg-[#0F172A] shadow-soft"
+        >
           {/* header */}
           <div className="px-4 py-3 md:px-6 md:py-4 border-b border-subtle">
             <h3 className="text-lg font-semibold">Lançar produto/serviço</h3>
@@ -330,6 +350,8 @@ export function AddChargeModal({ open, onClose, onConfirm, products, services }:
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
+
+  return createPortal(node, document.body);
 }

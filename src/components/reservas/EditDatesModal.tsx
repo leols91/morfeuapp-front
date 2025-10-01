@@ -1,12 +1,11 @@
 // src/components/reservas/EditDatesModal.tsx
 "use client";
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
-
-// ⬇️ kit de form padronizado
 import { Field, Input } from "@/components/ui/form/Field";
 
 const schema = z.object({
@@ -45,7 +44,19 @@ export function EditDatesModal({
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  if (!open) return null;
+  // ESC fecha
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  // portal só no client
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+
+  if (!open || !mounted) return null;
 
   async function submit(v: FormData) {
     setError(null);
@@ -60,14 +71,30 @@ export function EditDatesModal({
     }
   }
 
-  return (
-    <>
-      {/* backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose} />
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
 
-      {/* modal */}
-      <div className="fixed inset-0 z-50 grid place-items-center p-4">
-        <div className="w-full max-w-md rounded-2xl border-subtle border bg-white dark:bg-[#0F172A] shadow-soft">
+  const node = (
+    <div
+      className="fixed inset-0 z-[100000]"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}   // clicar fora fecha
+    >
+      {/* backdrop com blur (com fallback) */}
+      <div
+        className="
+          absolute inset-0
+          bg-black/55
+          backdrop-blur-[2px]
+          supports-[backdrop-filter]:bg-black/35
+        "
+      />
+      {/* container central */}
+      <div className="absolute inset-0 overflow-y-auto grid place-items-center p-4">
+        <div
+          onClick={stop}
+          className="w-full max-w-md rounded-2xl border-subtle border bg-white dark:bg-[#0F172A] shadow-soft"
+        >
           {/* header */}
           <div className="px-4 py-3 md:px-6 md:py-4 border-b border-subtle">
             <h3 className="text-lg font-semibold">Prorrogar saída</h3>
@@ -107,6 +134,8 @@ export function EditDatesModal({
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
+
+  return createPortal(node, document.body);
 }

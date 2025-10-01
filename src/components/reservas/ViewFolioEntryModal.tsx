@@ -11,6 +11,13 @@ type Props = {
 };
 
 export function ViewFolioEntryModal({ open, onClose, entry }: Props) {
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   if (!open || !entry) return null;
 
   const d = new Date(entry.createdAt);
@@ -21,16 +28,10 @@ export function ViewFolioEntryModal({ open, onClose, entry }: Props) {
   const min = String(d.getMinutes()).padStart(2, "0");
   const when = `${dd}/${mm}/${yyyy} ${hh}:${min}`;
 
-  // quantidade (fallback 1)
   const qty = (entry as any)?.qty ?? 1;
-
-  // total final (já com desconto aplicado, se houver)
   const totalFinal = entry.amount;
-
-  // preço final por unidade (resultado já aplicado)
   const unitFinal = qty ? totalFinal / qty : totalFinal;
 
-  // tentativa de capturar campos explícitos de desconto/preço base
   const explicitBaseUnit =
     (entry as any)?.baseUnitPrice ??
     (entry as any)?.unitPriceBeforeDiscount ??
@@ -44,20 +45,18 @@ export function ViewFolioEntryModal({ open, onClose, entry }: Props) {
     (entry as any)?.meta?.discountPerUnit ??
     null;
 
-  // calcula base e desconto de forma coesa:
-  // 1) se houver desconto explícito, usa; se não, tenta inferir pelo baseUnitPrice
-  // 2) nunca deixa desconto negativo
   let unitDiscount: number | null = null;
   let baseUnit: number | null = null;
-
   if (typeof explicitUnitDiscount === "number") {
     unitDiscount = Math.max(0, explicitUnitDiscount);
-    baseUnit = typeof explicitBaseUnit === "number" ? explicitBaseUnit : unitFinal + unitDiscount;
+    baseUnit =
+      typeof explicitBaseUnit === "number"
+        ? explicitBaseUnit
+        : unitFinal + unitDiscount;
   } else if (typeof explicitBaseUnit === "number") {
     baseUnit = explicitBaseUnit;
     unitDiscount = Math.max(0, baseUnit - unitFinal);
   } else {
-    // nenhum dado explícito: não arrisca inventar um base; deixa “—”
     baseUnit = null;
     unitDiscount = null;
   }
@@ -71,48 +70,61 @@ export function ViewFolioEntryModal({ open, onClose, entry }: Props) {
     return "Serviço";
   }
 
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose} />
-      <div className="fixed inset-0 z-50 grid place-items-center p-4">
-        <div className="w-full max-w-xl rounded-2xl border border-subtle bg-white dark:bg-[#0F172A] shadow-soft">
-          <div className="px-5 py-4 border-b border-subtle">
-            <h3 className="text-lg font-semibold">Detalhes do lançamento</h3>
-            <p className="text-xs opacity-70 mt-1">ID: {entry.id}</p>
-          </div>
-
-          <div className="px-5 py-5 space-y-4 text-sm">
-            <div className="grid grid-cols-2 gap-3">
-              <Item label="Data">{when}</Item>
-              <Item label="Tipo">{tipoLabel(entry.type)}</Item>
-              <Item label="Descrição" className="col-span-2">
-                {entry.description || "—"}
-              </Item>
+      {/* overlay único com blur (cobre 100% sem “filetinho”) */}
+      <div
+        className="fixed inset-0 z-[10000]"
+        role="dialog"
+        aria-modal="true"
+        onClick={onClose} // clique fora fecha
+      >
+        <div className="absolute inset-0 bg-black/50 supports-[backdrop-filter]:bg-black/30 supports-[backdrop-filter]:backdrop-blur-[2px]" />
+        <div className="relative min-h-full grid place-items-center p-4 overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+          <div
+            onClick={stop}
+            className="w-full max-w-xl rounded-2xl border border-subtle bg-white dark:bg-[#0F172A] shadow-soft"
+          >
+            <div className="px-5 py-4 border-b border-subtle">
+              <h3 className="text-lg font-semibold">Detalhes do lançamento</h3>
+              <p className="text-xs opacity-70 mt-1">ID: {entry.id}</p>
             </div>
 
-            {/* Totais com desconto */}
-            <div>
-              <div className="grid grid-cols-5 px-3 py-2 text-[11px] font-semibold opacity-70 bg-black/5 dark:bg-white/5 rounded-t-xl">
-                <div className="text-right">QTD.</div>
-                <div className="text-right">PREÇO BASE (UN.)</div>
-                <div className="text-right">DESCONTO (UN.)</div>
-                <div className="text-right">PREÇO FINAL (UN.)</div>
-                <div className="text-right">TOTAL</div>
+            <div className="px-5 py-5 space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <Item label="Data">{when}</Item>
+                <Item label="Tipo">{tipoLabel(entry.type)}</Item>
+                <Item label="Descrição" className="col-span-2">
+                  {entry.description || "—"}
+                </Item>
               </div>
-              <div className="grid grid-cols-5 px-3 py-3 rounded-b-xl border border-t-0 border-subtle tabular-nums">
-                <div className="text-right">{qty}</div>
-                <div className="text-right">{baseUnit != null ? money(baseUnit) : "—"}</div>
-                <div className="text-right">{unitDiscount != null ? money(unitDiscount) : "—"}</div>
-                <div className="text-right">{money(unitFinal)}</div>
-                <div className="text-right font-medium">{money(totalFinal)}</div>
+
+              {/* Totais com desconto */}
+              <div>
+                <div className="grid grid-cols-5 px-3 py-2 text-[11px] font-semibold opacity-70 bg-black/5 dark:bg-white/5 rounded-t-xl">
+                  <div className="text-right">QTD.</div>
+                  <div className="text-right">PREÇO BASE (UN.)</div>
+                  <div className="text-right">DESCONTO (UN.)</div>
+                  <div className="text-right">PREÇO FINAL (UN.)</div>
+                  <div className="text-right">TOTAL</div>
+                </div>
+                <div className="grid grid-cols-5 px-3 py-3 rounded-b-xl border border-t-0 border-subtle tabular-nums">
+                  <div className="text-right">{qty}</div>
+                  <div className="text-right">{baseUnit != null ? money(baseUnit) : "—"}</div>
+                  <div className="text-right">{unitDiscount != null ? money(unitDiscount) : "—"}</div>
+                  <div className="text-right">{money(unitFinal)}</div>
+                  <div className="text-right font-medium">{money(totalFinal)}</div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="px-5 py-4 border-t border-subtle flex justify-end">
-            <Button variant="outline" onClick={onClose}>
-              Fechar
-            </Button>
+            <div className="px-5 py-4 border-t border-subtle flex justify-end">
+              <Button variant="outline" onClick={onClose}>
+                Fechar
+              </Button>
+            </div>
           </div>
         </div>
       </div>
