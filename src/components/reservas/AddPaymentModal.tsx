@@ -1,8 +1,11 @@
 // src/components/reservas/AddPaymentModal.tsx
 "use client";
 import * as React from "react";
-import { createPortal } from "react-dom";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
+import { Field, Input, Select, Textarea } from "@/components/ui/form/Field";
 
 export type NewPaymentPayload = {
   method: string;
@@ -14,180 +17,139 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onConfirm: (payload: NewPaymentPayload) => Promise<void>;
-  methods?: string[];
+  methods?: string[]; // permite sobrescrever as opções
 };
 
-const DEFAULT_METHODS = ["Pix", "Dinheiro", "Cartão", "Booking", "Airbnb", "Transferência"];
+const DEFAULT_METHODS = ["Pix", "Dinheiro", "Cartão", "Booking", "Airbnb", "Transferência"] as const;
 
-/* === estilos utilitários (inputs) === */
-const wrap =
-  "group mt-1 rounded-xl border bg-transparent " +
-  "border-gray-300 dark:border-gray-600 " +
-  "transition-all duration-200 ease-out " +
-  "hover:border-purple-400/80 " +
-  "focus-within:border-purple-500 focus-within:shadow-[0_0_0_3px_rgba(168,85,247,0.22)]";
+/** =======================
+ *  Validação (zod)
+ *  - method obrigatório
+ *  - amount precisa ser número > 0
+ *  - note opcional
+ *  - aceitamos "" vindo do input numérico via z.nan()
+ * ======================= */
+const schema = z.object({
+  method: z.string().min(1, "Escolha a forma de pagamento"),
+  amount: z
+    .union([z.number(), z.nan()])
+    .refine((v) => !Number.isNaN(v as any) && Number(v) > 0, "Informe um valor maior que zero"),
+  note: z.string().optional(),
+});
 
-const inputBase =
-  "h-10 w-full rounded-xl bg-transparent px-3 outline-none border-0 ring-0 text-[15px]";
+// use o TIPO DE ENTRADA (aceita NaN como vazio)
+type FormData = z.input<typeof schema>;
 
-const selectBase =
-  "h-10 w-full rounded-xl bg-transparent px-3 pr-9 outline-none border-0 ring-0 appearance-none text-[15px]";
+export function AddPaymentModal({ open, onClose, onConfirm, methods = [...DEFAULT_METHODS] }: Props) {
+  const form = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      method: methods[0] ?? "Pix",
+      amount: Number.NaN,
+      note: "",
+    },
+  });
 
-const helpText = "text-[11px] opacity-70 mt-1";
+  // quando abrir, reseta com a 1ª forma disponível
+  React.useEffect(() => {
+    if (!open) return;
+    form.reset({
+      method: methods[0] ?? "Pix",
+      amount: Number.NaN,
+      note: "",
+    });
+  }, [open, methods, form]);
 
-export function AddPaymentModal({ open, onClose, onConfirm, methods = DEFAULT_METHODS }: Props) {
-  const [method, setMethod] = React.useState(methods[0] ?? "Pix");
-  const [amount, setAmount] = React.useState<number | "">("");
-  const [note, setNote] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // monta portal apenas no client
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
+  if (!open) return null;
 
-  React.useEffect(() => {
-    if (!open) return;
-    setMethod(methods[0] ?? "Pix");
-    setAmount("");
-    setNote("");
+  async function submit(v: FormData) {
     setError(null);
-  }, [open, methods]);
-
-  if (!open || !mounted) return null;
-
-  async function submit() {
+    setSaving(true);
     try {
-      setError(null);
-      setSaving(true);
-      if (amount === "" || Number(amount) <= 0) throw new Error("Informe um valor maior que zero.");
-      await onConfirm({ method, amount: Number(amount), note: note || undefined });
+      const payload: NewPaymentPayload = {
+        method: v.method,
+        amount: Number(v.amount),
+        note: v.note || undefined,
+      };
+      await onConfirm(payload);
       onClose();
+      form.reset();
     } catch (e: any) {
-      setError(e?.message ?? "Falha ao lançar pagamento.");
+      setError(e?.response?.data?.message ?? "Falha ao lançar pagamento.");
     } finally {
       setSaving(false);
     }
   }
 
-  const stop = (e: React.MouseEvent) => e.stopPropagation();
-
-  const node = (
-    <div
-      className="fixed inset-0 z-[1000] overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
-      {/* fundo com blur (com fallback) cobrindo 100% da viewport */}
-      <div className="absolute inset-0 bg-black/50 supports-[backdrop-filter]:bg-black/30 supports-[backdrop-filter]:backdrop-blur-[2px]" />
-
-      {/* container central do modal */}
-      <div className="absolute inset-0 grid place-items-center p-4">
-        <div
-          onClick={stop}
-          className="
-            w-full max-w-md rounded-3xl
-            border border-black/10 dark:border-white/10
-            bg-white dark:bg-[#0F172A]
-            shadow-xl shadow-black/20
-            transition-colors duration-200 ease-out
-            focus-within:border-purple-400/40
-          "
-        >
-          {/* Header */}
-          <div className="px-5 py-4 border-b border-black/10 dark:border-white/10 rounded-t-3xl">
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose} />
+      <div className="fixed inset-0 z-50 grid place-items-center p-4">
+        <div className="w-full max-w-md rounded-2xl border-subtle border bg-white dark:bg-[#0F172A] shadow-soft">
+          {/* header */}
+          <div className="px-4 py-3 md:px-6 md:py-4 border-b border-subtle">
             <h3 className="text-lg font-semibold">Lançar pagamento</h3>
             <p className="text-xs opacity-70 mt-1">
-              O folio continua em aberto até o check-out.
+              O folio permanece em aberto até o check-out.
             </p>
           </div>
 
-          {/* Body */}
-          <div className="px-5 py-5 space-y-4">
-            {/* Forma de pagamento */}
-            <div>
-              <label className="text-xs opacity-70 block">Forma de pagamento</label>
-              <div className={`relative ${wrap}`}>
-                <select
-                  className={selectBase}
-                  value={method}
-                  onChange={(e) => setMethod(e.target.value)}
+          {/* body */}
+          <div className="px-4 py-4 md:px-6 md:py-6">
+            <form id="form-add-payment" onSubmit={form.handleSubmit(submit)} className="space-y-4">
+              <Field label="Forma de pagamento" error={form.formState.errors.method?.message}>
+                <Select
+                  value={form.watch("method")}
+                  onChange={(e) => form.setValue("method", e.target.value, { shouldDirty: true, shouldValidate: true })}
                 >
                   {methods.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
+                    <option key={m} value={m}>{m}</option>
                   ))}
-                </select>
-                <div
-                  className="
-                    pointer-events-none absolute right-3 top-1/2 -translate-y-1/2
-                    text-base opacity-60 select-none
-                    transition-all duration-200 ease-out
-                    group-focus-within:opacity-90 group-hover:opacity-80
-                    group-focus-within:rotate-180
-                  "
-                >
-                  ▾
+                </Select>
+              </Field>
+
+              <Field label="Valor" error={form.formState.errors.amount?.message}>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm opacity-70 select-none">R$</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    inputMode="decimal"
+                    className="pl-9"
+                    {...form.register("amount", {
+                      setValueAs: (v) => (v === "" ? Number.NaN : Number(v)),
+                    })}
+                  />
                 </div>
-              </div>
-              <div className={helpText}>Escolha como o hóspede pagou.</div>
-            </div>
+                <div className="text-[11px] opacity-70 mt-1">Use ponto para centavos (ex.: 85.50).</div>
+              </Field>
 
-            {/* Valor */}
-            <div>
-              <label className="text-xs opacity-70 block">Valor</label>
-              <div className={`relative ${wrap}`}>
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm opacity-70 select-none">
-                  R$
-                </span>
-                <input
-                  type="number"
-                  step="0.01"
-                  inputMode="decimal"
-                  className={`${inputBase} pl-9`}
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))}
-                  placeholder="0,00"
-                />
-              </div>
-              <div className={helpText}>Use ponto para centavos (ex.: 85.50).</div>
-            </div>
-
-            {/* Observação */}
-            <div>
-              <label className="text-xs opacity-70 block">Observação (opcional)</label>
-              <div className={wrap}>
-                <input
-                  className={inputBase}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
+              <Field label="Observação (opcional)">
+                <Textarea
+                  rows={3}
                   placeholder="ex.: pagamento parcial na entrada"
+                  {...form.register("note")}
                 />
-              </div>
-            </div>
+              </Field>
 
-            {error && (
-              <p className="text-sm text-red-500 border border-red-500/30 bg-red-500/5 rounded-lg p-2">
-                {error}
-              </p>
-            )}
+              {error && <p className="text-sm text-red-500">{error}</p>}
+            </form>
           </div>
 
-          {/* Footer */}
-          <div className="px-5 py-4 border-t border-black/10 dark:border-white/10 rounded-b-3xl flex justify-end gap-2">
-            <Button variant="ghost" onClick={onClose}>
+          {/* footer */}
+          <div className="px-4 py-3 md:px-6 md:py-4 border-t border-subtle flex items-center justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={onClose}>
               Cancelar
             </Button>
-            <Button onClick={submit} disabled={saving}>
+            <Button form="form-add-payment" type="submit" disabled={saving}>
               {saving ? "Lançando…" : "Lançar"}
             </Button>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
-
-  return createPortal(node, document.body);
 }

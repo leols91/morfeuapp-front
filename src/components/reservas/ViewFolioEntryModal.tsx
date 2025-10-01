@@ -21,18 +21,55 @@ export function ViewFolioEntryModal({ open, onClose, entry }: Props) {
   const min = String(d.getMinutes()).padStart(2, "0");
   const when = `${dd}/${mm}/${yyyy} ${hh}:${min}`;
 
+  // quantidade (fallback 1)
   const qty = (entry as any)?.qty ?? 1;
-  const total = entry.amount;
-  const unit = qty ? total / qty : total;
+
+  // total final (já com desconto aplicado, se houver)
+  const totalFinal = entry.amount;
+
+  // preço final por unidade (resultado já aplicado)
+  const unitFinal = qty ? totalFinal / qty : totalFinal;
+
+  // tentativa de capturar campos explícitos de desconto/preço base
+  const explicitBaseUnit =
+    (entry as any)?.baseUnitPrice ??
+    (entry as any)?.unitPriceBeforeDiscount ??
+    (entry as any)?.meta?.baseUnitPrice ??
+    null;
+
+  const explicitUnitDiscount =
+    (entry as any)?.discount ??
+    (entry as any)?.unitDiscount ??
+    (entry as any)?.discountPerUnit ??
+    (entry as any)?.meta?.discountPerUnit ??
+    null;
+
+  // calcula base e desconto de forma coesa:
+  // 1) se houver desconto explícito, usa; se não, tenta inferir pelo baseUnitPrice
+  // 2) nunca deixa desconto negativo
+  let unitDiscount: number | null = null;
+  let baseUnit: number | null = null;
+
+  if (typeof explicitUnitDiscount === "number") {
+    unitDiscount = Math.max(0, explicitUnitDiscount);
+    baseUnit = typeof explicitBaseUnit === "number" ? explicitBaseUnit : unitFinal + unitDiscount;
+  } else if (typeof explicitBaseUnit === "number") {
+    baseUnit = explicitBaseUnit;
+    unitDiscount = Math.max(0, baseUnit - unitFinal);
+  } else {
+    // nenhum dado explícito: não arrisca inventar um base; deixa “—”
+    baseUnit = null;
+    unitDiscount = null;
+  }
+
+  const money = (v: number) =>
+    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   function tipoLabel(t: FolioEntry["type"]) {
     if (t === "room_charge") return "Diária";
     if (t === "product") return "Produto";
     return "Serviço";
   }
-
-  const money = (v: number) =>
-    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   return (
     <>
@@ -49,21 +86,25 @@ export function ViewFolioEntryModal({ open, onClose, entry }: Props) {
               <Item label="Data">{when}</Item>
               <Item label="Tipo">{tipoLabel(entry.type)}</Item>
               <Item label="Descrição" className="col-span-2">
-                {entry.description}
+                {entry.description || "—"}
               </Item>
             </div>
 
-            {/* Linha de totais bem alinhada */}
+            {/* Totais com desconto */}
             <div>
-              <div className="grid grid-cols-3 px-3 py-2 text-xs font-semibold opacity-70 bg-black/5 dark:bg-white/5 rounded-t-xl">
+              <div className="grid grid-cols-5 px-3 py-2 text-[11px] font-semibold opacity-70 bg-black/5 dark:bg-white/5 rounded-t-xl">
                 <div className="text-right">QTD.</div>
-                <div className="text-right">VALOR UNITÁRIO</div>
-                <div className="text-right">VALOR TOTAL</div>
+                <div className="text-right">PREÇO BASE (UN.)</div>
+                <div className="text-right">DESCONTO (UN.)</div>
+                <div className="text-right">PREÇO FINAL (UN.)</div>
+                <div className="text-right">TOTAL</div>
               </div>
-              <div className="grid grid-cols-3 px-3 py-3 rounded-b-xl border border-t-0 border-subtle tabular-nums">
+              <div className="grid grid-cols-5 px-3 py-3 rounded-b-xl border border-t-0 border-subtle tabular-nums">
                 <div className="text-right">{qty}</div>
-                <div className="text-right">{money(unit)}</div>
-                <div className="text-right font-medium">{money(total)}</div>
+                <div className="text-right">{baseUnit != null ? money(baseUnit) : "—"}</div>
+                <div className="text-right">{unitDiscount != null ? money(unitDiscount) : "—"}</div>
+                <div className="text-right">{money(unitFinal)}</div>
+                <div className="text-right font-medium">{money(totalFinal)}</div>
               </div>
             </div>
           </div>
