@@ -1,35 +1,94 @@
 // src/components/reservas/ReservaHeader.tsx
 "use client";
+
 import { StatusBadge } from "./StatusBadge";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isSameMonth, isSameYear, differenceInCalendarDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-export function ReservaHeader(props: {
+type Props = {
   hospede: string;
-  inicio: string;
-  fim: string;
+  inicio: string;    // ISO
+  fim: string;       // ISO
   acomodacao: string;
   status: import("@/types/reserva").ReservaStatus;
-  saldo: number;
-}) {
+  saldo?: number;    // opcional
+  showSaldo?: boolean; // default: false (evita duplicar com FolioSummary)
+};
+
+export function ReservaHeader({
+  hospede,
+  inicio,
+  fim,
+  acomodacao,
+  status,
+  saldo = 0,
+  showSaldo = false,
+}: Props) {
+  const ini = parseISO(inicio);
+  const end = parseISO(fim);
+  const nights = Math.max(1, differenceInCalendarDays(end, ini));
+
   return (
     <div className="surface">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{props.hospede}</h1>
-          <div className="text-sm opacity-80 mt-1">
-            {format(parseISO(props.inicio), "dd/MM/yyyy", { locale: ptBR })} — {format(parseISO(props.fim), "dd/MM/yyyy", { locale: ptBR })} · {props.acomodacao}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        {/* título + meta */}
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold truncate">{hospede}</h1>
+
+          {/* meta chips: período, noites, acomodação */}
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+            <MetaChip>{formatRangePTBR(ini, end)}</MetaChip>
+            <MetaChip>{nights} {nights === 1 ? "noite" : "noites"}</MetaChip>
+            <MetaChip>{acomodacao}</MetaChip>
           </div>
         </div>
+
+        {/* status + (opcional) saldo */}
         <div className="flex items-center gap-3">
-          <StatusBadge status={props.status} />
-          <div className="rounded-xl px-3 py-1 border-subtle border text-sm">
-            Saldo: <span className="font-semibold">{formatBRL(props.saldo)}</span>
-          </div>
+          <StatusBadge status={status} />
+          {showSaldo && (
+            <div
+              className={`
+                rounded-xl px-3 py-1 border text-sm border-subtle
+                ${saldo > 0 ? "text-amber-300" : saldo < 0 ? "text-emerald-300" : "opacity-90"}
+              `}
+              title="Saldo do folio"
+            >
+              Saldo: <span className="font-semibold">{formatBRL(saldo)}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+function MetaChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-xl border border-black/10 dark:border-white/10 px-3 py-1 opacity-80">
+      {children}
+    </span>
+  );
+}
+
+function formatRangePTBR(ini: Date, end: Date) {
+  // exemplos:
+  // 25–28/09/2025 (mesmo mês/ano)
+  // 28/09 — 02/10/2025 (mesmo ano, meses diferentes)
+  // 28/12/2025 — 03/01/2026 (anos diferentes)
+  if (isSameYear(ini, end)) {
+    if (isSameMonth(ini, end)) {
+      const left = format(ini, "dd/MM/yy", { locale: ptBR });
+      const right = format(end, "dd/MM/yy", { locale: ptBR });
+      return `${left}–${right}`;
+    }
+    const left = format(ini, "dd/MM", { locale: ptBR });
+    const right = format(end, "dd/MM/yyyy", { locale: ptBR });
+    return `${left} — ${right}`;
+  }
+  const left = format(ini, "dd/MM/yyyy", { locale: ptBR });
+  const right = format(end, "dd/MM/yyyy", { locale: ptBR });
+  return `${left} — ${right}`;
 }
 
 function formatBRL(v: number) {
