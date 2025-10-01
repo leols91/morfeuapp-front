@@ -20,7 +20,6 @@ import {
 } from "@/services/reservas";
 import type { FolioEntry } from "@/types/reserva";
 import { ReservaHeader } from "@/components/reservas/ReservaHeader";
-import { ReservaActions } from "@/components/reservas/ReservaActions";
 import { FolioPayments, FolioSummary } from "@/components/reservas/FolioSummary";
 import { CheckInOutModal } from "@/components/reservas/CheckInOutModal";
 import { CancelReservaModal } from "@/components/reservas/CancelReservaModal";
@@ -31,12 +30,11 @@ import { ChangeAcomodacaoModal } from "@/components/reservas/ChangeAcomodacaoMod
 import { AddChargeModal } from "@/components/reservas/AddChargeModal";
 import { EditFolioEntryModal } from "@/components/reservas/EditFolioEntryModal";
 import { ViewFolioEntryModal } from "@/components/reservas/ViewFolioEntryModal";
-
-import { ReservaToolbar } from "@/components/reservas/ReservaToolbar";
 import { FolioEntriesTable } from "@/components/reservas/FolioEntriesTable";
 import { ReservaRightColumn } from "@/components/reservas/ReservaRightColumn";
 import { GuestProfileModal } from "@/components/reservas/GuestProfileModal";
 import { AddPaymentModal } from "@/components/reservas/AddPaymentModal"; // ✅ novo modal
+import { ReservaControls } from "@/components/reservas/ReservaControls";
 
 export default function ReservaDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -126,18 +124,15 @@ export default function ReservaDetalhePage() {
         saldo={data.folio.saldo}
       />
 
-      <ReservaActions
+      <ReservaControls
         status={data.status}
         onOpenCheckIn={() => setOpenCI("checkin")}
         onOpenCheckOut={() => setOpenCI("checkout")}
         onOpenCancel={() => setOpenCancel(true)}
-      />
-
-      <ReservaToolbar
         onOpenEditDates={() => setOpenEditDates(true)}
         onOpenChangeAcom={() => setOpenChangeAcom(true)}
         onOpenAddCharge={() => setOpenAddCharge(true)}
-        onOpenAddPayment={() => setOpenAddPayment(true)} // ✅ botão funcionando
+        onOpenAddPayment={() => setOpenAddPayment(true)}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
