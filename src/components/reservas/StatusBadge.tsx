@@ -3,18 +3,24 @@ import { cn } from "@/components/ui/cn";
 import type { ReservaStatus } from "@/types/reserva";
 
 const map: Record<ReservaStatus, string> = {
-  pending:    "bg-yellow-500/15 text-yellow-700 dark:text-yellow-300 border-yellow-500/20",
-  confirmed:  "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 font-semibold px-3 py-1 text-sm shadow-sm",
-  checked_in: "bg-green-500/15 text-green-700 dark:text-green-300 border-green-500/20",
-  checked_out:"bg-gray-500/15 text-gray-700 dark:text-gray-300 border-gray-500/20",
-  canceled:   "bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/20",
+  pending:
+    "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30",
+  confirmed:
+    "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30",
+  checked_in:
+    "bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/30",
+  checked_out:
+    "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/30",
+  canceled:
+    "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30",
 };
 
 export function StatusBadge({ status }: { status: ReservaStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border transition-colors duration-200",
+        "inline-flex items-center rounded-full border px-3 py-1 text-sm font-semibold",
+        "shadow-[0_1px_0_0_rgba(0,0,0,0.03)]",
         map[status]
       )}
     >

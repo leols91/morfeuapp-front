@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import type { Route } from "next";
 
+// 🔧 kit de form padronizado
+import { Field, Input, Select } from "@/components/ui/form/Field";
+
 const statuses = [
   { value: "all",         label: "Todos" },
   { value: "pending",     label: "Pendente" },
@@ -44,6 +47,11 @@ export default function ReservasPage() {
     queueMicrotask(() => refetch());
   };
 
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    refetch();
+  }
+
   return (
     <div className="space-y-4">
       {/* Header + Actions */}
@@ -54,33 +62,27 @@ export default function ReservasPage() {
         </Link>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros – agora com Field/Input/Select */}
       <div className="surface-2">
-        <div className="flex flex-wrap items-start gap-3">
-          <div className="w-full md:w-auto">
-            <label className="text-xs opacity-70 block">Período — Início</label>
-            <input
+        <form onSubmit={submit} className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(4,auto)_1fr] items-end">
+          <Field label="Período — Início" className="w-full md:w-44">
+            <Input
               type="date"
-              className="mt-1 h-9 w-full md:w-44 rounded-2xl border-subtle bg-transparent px-3"
               value={filters.from ?? ""}
               onChange={(e) => handleChange("from", e.target.value || undefined)}
             />
-          </div>
+          </Field>
 
-          <div className="w-full md:w-auto">
-            <label className="text-xs opacity-70 block">Período — Fim</label>
-            <input
+          <Field label="Período — Fim" className="w-full md:w-44">
+            <Input
               type="date"
-              className="mt-1 h-9 w-full md:w-44 rounded-2xl border-subtle bg-transparent px-3"
               value={filters.to ?? ""}
               onChange={(e) => handleChange("to", e.target.value || undefined)}
             />
-          </div>
+          </Field>
 
-          <div className="w-full md:w-40">
-            <label className="text-xs opacity-70 block">Status</label>
-            <select
-              className="mt-1 h-9 w-full rounded-2xl border-subtle bg-transparent px-3"
+          <Field label="Status" className="w-full md:w-44">
+            <Select
               value={filters.status ?? "all"}
               onChange={(e) => handleChange("status", e.target.value as ListReservasParams["status"])}
             >
@@ -89,13 +91,11 @@ export default function ReservasPage() {
                   {s.label}
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Field>
 
-          <div className="w-full md:w-40">
-            <label className="text-xs opacity-70 block">Canal</label>
-            <select
-              className="mt-1 h-9 w-full rounded-2xl border-subtle bg-transparent px-3"
+          <Field label="Canal" className="w-full md:w-44">
+            <Select
               value={filters.canal ?? "all"}
               onChange={(e) => handleChange("canal", e.target.value as ListReservasParams["canal"])}
             >
@@ -104,19 +104,19 @@ export default function ReservasPage() {
                   {c.label}
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Field>
 
           {/* Ações */}
-          <div className="ml-auto flex items-end mt-2 gap-2 w-full md:w-auto">
-            <Button variant="ghost" onClick={reset}>
+          <div className="ml-auto flex items-end gap-2">
+            <Button type="button" variant="ghost" onClick={reset}>
               Limpar
             </Button>
-            <Button onClick={() => refetch()} disabled={isLoading || isFetching}>
-              {isLoading || isFetching ? "Filtrando..." : "Aplicar"}
+            <Button type="submit" disabled={isLoading || isFetching}>
+              {isLoading || isFetching ? "Filtrando…" : "Aplicar"}
             </Button>
           </div>
-        </div>
+        </form>
       </div>
 
       {/* Tabela */}
@@ -127,7 +127,9 @@ export default function ReservasPage() {
           <ReservasTable data={data?.data ?? []} />
         )}
         {!isLoading && (data?.data?.length ?? 0) === 0 && (
-          <div className="p-6 text-sm opacity-70">Nenhuma reserva encontrada para os filtros informados.</div>
+          <div className="p-6 text-sm opacity-70">
+            Nenhuma reserva encontrada para os filtros informados.
+          </div>
         )}
       </div>
     </div>
