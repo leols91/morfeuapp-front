@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Input } from "@/components/ui/form/Field";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
