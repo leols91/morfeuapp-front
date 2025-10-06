@@ -7,7 +7,7 @@ import { cn } from "@/components/ui/cn";
 const items: ReadonlyArray<{ href: Route; label: string }> = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/reservas", label: "Reservas" },
-  { href: "/quartos", label: "Acomodações" },
+  { href: "/acomodacoes", label: "Acomodações" },
   { href: "/hospedes", label: "Hóspedes" },
   { href: "/estoque", label: "Estoque" },
   { href: "/financeiro", label: "Financeiro" },
