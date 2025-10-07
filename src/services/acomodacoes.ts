@@ -16,6 +16,21 @@ export type CreateQuartoPayload = {
   housekeepingStatusCode: string;
 };
 
+// DTO básico do Quarto (conforme backend)
+export type QuartoDTO = {
+  id: string;
+  roomTypeId: string;
+  code: string;
+  floor: string | null;
+  description: string | null;
+  roomStatusCode: string;
+  housekeepingStatusCode: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type UpdateQuartoPayload = CreateQuartoPayload;
+
 /* ===========================================
  *  NOVOS ENDPOINTS (backend novo)
  * =========================================== */
@@ -24,13 +39,13 @@ export type CreateQuartoPayload = {
 export async function listRoomTypes(): Promise<RoomTypeDTO[]> {
   try {
     const { data } = await api.get("/room-types");
-    // espere { data: Array<{ id, name }> } do backend
+    // espera { data: Array<{ id, name }> } do backend
     return data?.data ?? [];
   } catch {
     // fallback mock para desenvolvimento
     return [
       { id: "rt_std", name: "Quarto Privativo" },
-      { id: "rt_del", name: "Quarto Compartilhado" },
+      { id: "rt_shd", name: "Quarto Compartilhado" },
     ];
   }
 }
@@ -39,13 +54,13 @@ export async function listRoomTypes(): Promise<RoomTypeDTO[]> {
 export async function listRoomStatuses(): Promise<StatusDTO[]> {
   try {
     const { data } = await api.get("/room-statuses");
-    // espere { data: Array<{ code, description }> }
+    // espera { data: Array<{ code, description }> }
     return data?.data ?? [];
   } catch {
     return [
-      { code: "available",  description: "Disponível" },
-      { code: "occupied",   description: "Ocupado" },
-      { code: "maintenance",description: "Em manutenção" },
+      { code: "available",   description: "Disponível" },
+      { code: "occupied",    description: "Ocupado" },
+      { code: "maintenance", description: "Em manutenção" },
     ];
   }
 }
@@ -69,6 +84,33 @@ export async function listHousekeepingStatuses(): Promise<StatusDTO[]> {
 export async function createQuarto(payload: CreateQuartoPayload): Promise<{ id: string }> {
   const { data } = await api.post("/quartos", payload);
   // espere { id, ... } ou { data: { id, ... } }
+  return data?.data ?? data;
+}
+
+// Obter Quarto por id
+export async function getQuarto(id: string): Promise<QuartoDTO> {
+  try {
+    const { data } = await api.get(`/quartos/${id}`);
+    // { data: { ...quarto } } ou direto { ...quarto }
+    return data?.data ?? data;
+  } catch {
+    // fallback mock: útil enquanto o backend não está plugado
+    return {
+      id,
+      roomTypeId: "rt_std",
+      code: "101",
+      floor: "1",
+      description: "Quarto com janela para o jardim.",
+      roomStatusCode: "available",
+      housekeepingStatusCode: "clean",
+    };
+  }
+}
+
+// Atualizar Quarto
+export async function updateQuarto(id: string, payload: UpdateQuartoPayload): Promise<{ id: string }> {
+  const { data } = await api.patch(`/quartos/${id}`, payload);
+  // responde { data: { id, ... } } ou { id, ... }
   return data?.data ?? data;
 }
 

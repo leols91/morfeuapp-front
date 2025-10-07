@@ -1,4 +1,3 @@
-// src/app/acomodacoes/nova/page.tsx
 "use client";
 
 import * as React from "react";
@@ -25,11 +24,12 @@ import {
 const schema = z.object({
   roomTypeId: z.string().min(1, "Selecione o tipo de quarto"),
   code: z.string().min(1, "Informe o código/número do quarto"),
-  roomName: z.string().optional(), // ainda não vai ao backend
+  roomName: z.string().optional(),
   floor: z.string().optional(),
   description: z.string().optional(),
   roomStatusCode: z.string().min(1, "Selecione o status do quarto"),
   housekeepingStatusCode: z.string().min(1, "Selecione o status de governança"),
+  amenities: z.string().optional(), // vírgulas
 });
 
 type FormInput = z.input<typeof schema>;
@@ -67,6 +67,7 @@ export default function NovaAcomodacaoPage() {
       description: "",
       roomStatusCode: "",
       housekeepingStatusCode: "",
+      amenities: "",
     },
   });
 
@@ -87,10 +88,7 @@ export default function NovaAcomodacaoPage() {
       router.replace("/acomodacoes");
     },
     onError: (err: any) => {
-      const msg =
-        err?.response?.data?.message ||
-        "Falha ao criar o quarto. Verifique os dados.";
-      toast.error(msg);
+      toast.error(err?.response?.data?.message ?? "Falha ao criar o quarto.");
     },
   });
 
@@ -104,13 +102,7 @@ export default function NovaAcomodacaoPage() {
         <h1 className="text-xl font-semibold">Novo quarto</h1>
       </div>
 
-      <form
-        onSubmit={form.handleSubmit(
-          (v) => criar.mutate(v),
-          () => toast.error("Corrija os campos destacados e tente novamente.")
-        )}
-        className="space-y-4"
-      >
+      <form onSubmit={form.handleSubmit((v) => criar.mutate(v))} className="space-y-4">
         {/* Bloco 1: dados essenciais */}
         <div className="surface-2">
           <div className="grid grid-cols-12 gap-4">
@@ -203,16 +195,27 @@ export default function NovaAcomodacaoPage() {
           </div>
         </div>
 
-        {/* Bloco 3: descrição */}
+        {/* Bloco 3: descrição + amenidades */}
         <div className="surface-2">
           <div className="grid grid-cols-12 gap-4">
-            <div className="col-span-12">
+            <div className="col-span-12 lg:col-span-7">
               <Field label="Descrição (opcional)">
                 <Textarea
                   rows={3}
                   placeholder="Informações adicionais do quarto (vista, observações, etc.)"
                   {...form.register("description")}
                 />
+              </Field>
+            </div>
+            <div className="col-span-12 lg:col-span-5">
+              <Field label="Amenidades (separe por vírgulas)">
+                <Input
+                  placeholder="Ar-condicionado, Wi-Fi, TV, Cofre…"
+                  {...form.register("amenities")}
+                />
+                <div className="text-[11px] opacity-70 mt-1">
+                  Ex.: Ar-condicionado, TV, Cofre
+                </div>
               </Field>
             </div>
           </div>
