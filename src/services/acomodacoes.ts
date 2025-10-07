@@ -1,10 +1,88 @@
+// src/services/acomodacoes.ts
+import { api } from "@/lib/api";
+
+/* ===========================================
+ *  TIPOS (apenas locais deste service)
+ * =========================================== */
+export type RoomTypeDTO = { id: string; name: string };
+export type StatusDTO   = { code: string; description: string };
+
+export type CreateQuartoPayload = {
+  roomTypeId: string;
+  code: string;
+  floor?: string | null;
+  description?: string | null;
+  roomStatusCode: string;
+  housekeepingStatusCode: string;
+};
+
+/* ===========================================
+ *  NOVOS ENDPOINTS (backend novo)
+ * =========================================== */
+
+// Tipos de quarto
+export async function listRoomTypes(): Promise<RoomTypeDTO[]> {
+  try {
+    const { data } = await api.get("/room-types");
+    // espere { data: Array<{ id, name }> } do backend
+    return data?.data ?? [];
+  } catch {
+    // fallback mock para desenvolvimento
+    return [
+      { id: "rt_std", name: "Quarto Privativo" },
+      { id: "rt_del", name: "Quarto Compartilhado" },
+    ];
+  }
+}
+
+// Status de quarto (ocupação)
+export async function listRoomStatuses(): Promise<StatusDTO[]> {
+  try {
+    const { data } = await api.get("/room-statuses");
+    // espere { data: Array<{ code, description }> }
+    return data?.data ?? [];
+  } catch {
+    return [
+      { code: "available",  description: "Disponível" },
+      { code: "occupied",   description: "Ocupado" },
+      { code: "maintenance",description: "Em manutenção" },
+    ];
+  }
+}
+
+// Status de governança/housekeeping
+export async function listHousekeepingStatuses(): Promise<StatusDTO[]> {
+  try {
+    const { data } = await api.get("/housekeeping-statuses");
+    return data?.data ?? [];
+  } catch {
+    return [
+      { code: "clean",     description: "Limpo" },
+      { code: "dirty",     description: "Sujo" },
+      { code: "inspected", description: "Inspecionado" },
+      { code: "ooo",       description: "Fora de operação" },
+    ];
+  }
+}
+
+// Criar Quarto
+export async function createQuarto(payload: CreateQuartoPayload): Promise<{ id: string }> {
+  const { data } = await api.post("/quartos", payload);
+  // espere { id, ... } ou { data: { id, ... } }
+  return data?.data ?? data;
+}
+
+/* ===========================================
+ *  APIs ANTIGAS QUE VOCÊ JÁ USAVA
+ *  (mantidas para compatibilidade)
+ * =========================================== */
+
 import type { ListAcomodacoesParams, AcomodacaoDTO } from "@/types/acomodacao";
 
-/** Exemplo de serviço com filtros via querystring.
- *  Troque por seu client/endpoint real.
- */
-export async function listAcomodacoes(params: ListAcomodacoesParams): Promise<{ data: AcomodacaoDTO[] }> {
-  // Monte sua querystring real aqui:
+/** Lista acomodações (mock + /api/acomodacoes local até o backend ligar) */
+export async function listAcomodacoes(
+  params: ListAcomodacoesParams
+): Promise<{ data: AcomodacaoDTO[] }> {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   if (params.status && params.status !== "all") qs.set("status", params.status);
@@ -14,10 +92,13 @@ export async function listAcomodacoes(params: ListAcomodacoesParams): Promise<{ 
   if (params.priceMin != null) qs.set("priceMin", String(params.priceMin));
   if (params.priceMax != null) qs.set("priceMax", String(params.priceMax));
 
-  // TODO: substituir endpoint
-  const res = await fetch(`/api/acomodacoes?${qs.toString()}`, { cache: "no-store" });
-  if (!res.ok) {
-    // fallback mock (até o backend estar ligado)
+  try {
+    const res = await fetch(`/api/acomodacoes?${qs.toString()}`, { cache: "no-store" });
+    if (!res.ok) throw new Error("bad status");
+    const json = await res.json();
+    return { data: json?.data ?? [] };
+  } catch {
+    // fallback até integrar de vez
     return {
       data: [
         {
@@ -54,6 +135,19 @@ export async function listAcomodacoes(params: ListAcomodacoesParams): Promise<{ 
       ],
     };
   }
-  const json = await res.json();
-  return { data: json?.data ?? [] };
+}
+
+/** Cria acomodação (API antiga; mantido se ainda for usado em alguma tela) */
+export async function createAcomodacao(payload: {
+  kind: "room" | "bed";
+  label: string;
+  status: "available" | "occupied" | "maintenance";
+  capacity: number;
+  price: number | null;
+  description?: string | null;
+  amenities?: string[];
+  notes?: string | null;
+}) {
+  const { data } = await api.post("/acomodacoes", payload);
+  return data;
 }
