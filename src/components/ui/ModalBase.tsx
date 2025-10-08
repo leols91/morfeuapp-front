@@ -1,3 +1,4 @@
+// src/components/ui/ModalBase.tsx
 "use client";
 import * as React from "react";
 import { createPortal } from "react-dom";
@@ -6,13 +7,9 @@ import { cn } from "@/components/ui/cn";
 type ModalBaseProps = {
   open: boolean;
   onClose: () => void;
-  /** Conteúdo do modal. Use os helpers <ModalBase.Card/> <ModalBase.Header/> etc. */
   children: React.ReactNode;
-  /** Fecha ao clicar no backdrop (default: true) */
   closeOnBackdrop?: boolean;
-  /** Fecha ao pressionar ESC (default: true) */
   closeOnEsc?: boolean;
-  /** z-index base do backdrop (o card usa +1). Default: 100000 */
   zIndexBase?: number;
 };
 
@@ -24,11 +21,9 @@ export function ModalBase({
   closeOnEsc = true,
   zIndexBase = 100000,
 }: ModalBaseProps) {
-  // monta portal apenas no client
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
-  // ESC para fechar
   React.useEffect(() => {
     if (!open || !closeOnEsc) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -48,19 +43,17 @@ export function ModalBase({
       style={{ zIndex: zIndexBase + 0 }}
       onClick={closeOnBackdrop ? onClose : undefined}
     >
-      {/* Backdrop com blur real + fallback */}
+      {/* Backdrop */}
       <div
         className={cn(
           "absolute inset-0",
-          // fallback sólido + leve transparência
           "bg-black/55",
-          // quando há suporte a blur, suaviza o fundo e clareia um pouco
           "backdrop-blur-[2px] supports-[backdrop-filter]:bg-black/35"
         )}
       />
-      {/* Container central com rolagem quando necessário */}
+      {/* Container com rolagem */}
       <div className="absolute inset-0 overflow-y-auto grid place-items-center p-4">
-        {/* Content wrapper: impede fechar ao clicar dentro */}
+        {/* Wrapper do conteúdo (impede fechar ao clicar dentro) */}
         <div onClick={stop} style={{ zIndex: zIndexBase + 1 }}>{children}</div>
       </div>
     </div>
@@ -69,28 +62,37 @@ export function ModalBase({
   return createPortal(node, document.body);
 }
 
-/* ===============================
- *  Helpers de layout (opcionais)
- *  Mantêm o mesmo “look” de todos os modais
- * =============================== */
+/* =========================================
+ * Helpers de layout para manter padrão
+ * ========================================= */
 type CardProps = React.HTMLAttributes<HTMLDivElement> & {
-  /** Largura máxima (tailwind). Default: max-w-xl */
-  maxWidth?:
-    | "max-w-sm"
-    | "max-w-md"
-    | "max-w-lg"
-    | "max-w-xl"
-    | "max-w-2xl"
-    | "max-w-3xl"
-    | "max-w-4xl";
+  /**
+   * Classe de largura máxima (Tailwind). Default: "max-w-xl".
+   * Aceita qualquer classe válida, ex.:
+   *  - "max-w-3xl", "max-w-5xl", "max-w-7xl"
+   *  - "max-w-screen-lg", "max-w-screen-xl"
+   *  - "max-w-[90vw]" (custom)
+   */
+  maxWidth?: string;
+  /**
+   * Largura base do card. Default: "w-full".
+   * Útil se quiser algo como "w-auto" combinando com maxWidth.
+   */
+  widthClass?: string;
 };
-function Card({ className, maxWidth = "max-w-xl", ...props }: CardProps) {
+function Card({
+  className,
+  maxWidth = "max-w-xl",
+  widthClass = "w-full",
+  ...props
+}: CardProps) {
   return (
     <div
       {...props}
       className={cn(
-        "w-full rounded-2xl border-subtle border bg-white dark:bg-[#0F172A] shadow-soft",
+        widthClass,
         maxWidth,
+        "rounded-2xl border-subtle border bg-white dark:bg-[#0F172A] shadow-soft",
         className
       )}
     />
