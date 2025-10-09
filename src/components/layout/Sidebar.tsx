@@ -9,7 +9,7 @@ const items: ReadonlyArray<{ href: Route; label: string }> = [
   { href: "/reservas", label: "Reservas" },
   { href: "/acomodacoes", label: "Acomodações" },
   { href: "/hospedes", label: "Hóspedes" },
-  { href: "/estoque", label: "Estoque" },
+  { href: "/estoque", label: "Produtos / Estoque" },
   { href: "/financeiro", label: "Financeiro" },
   { href: "/configuracoes", label: "Configurações" },
 ] as const;
