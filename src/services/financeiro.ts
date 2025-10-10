@@ -205,3 +205,111 @@ export async function payAPInvoice(payload: PayAPInvoicePayload): Promise<{ id: 
     return { id: `appay_${Math.random().toString(36).slice(2, 8)}` };
   }
 }
+
+// =========================
+// CONTAS A RECEBER (AR)
+// =========================
+export type ARInvoiceDTO = {
+  id: string;
+  description: string;
+  amount: number;
+  dueDate: string;
+  status: "open" | "received" | "canceled";
+  customer: { id?: string; name: string }; // simples
+  createdAt: string;
+  items?: Array<{
+    id: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }>;
+  receipts?: Array<{
+    id: string;
+    amount: number;
+    receivedAt: string;
+    account: { id: string; name: string };
+  }>;
+};
+
+export type CreateARInvoicePayload = {
+  customer: { id?: string; name: string };
+  description: string;
+  dueDate: string; // ISO
+  items: Array<{ description: string; quantity: number; unitPrice: number }>;
+  note?: string | null;
+};
+
+export type ReceiveARInvoicePayload = {
+  invoiceId: string;
+  accountId: string;
+  amount: number;
+  receivedAt?: string; // ISO
+};
+
+export async function listARInvoices(params?: {
+  status?: "all" | "open" | "received" | "canceled";
+}): Promise<ARInvoiceDTO[]> {
+  const qs = new URLSearchParams();
+  if (params?.status && params.status !== "all") qs.set("status", params.status);
+  try {
+    const { data } = await api.get(`/ar-invoices?${qs.toString()}`);
+    return (data?.data ?? data ?? []) as ARInvoiceDTO[];
+  } catch {
+    // Mocks
+    const today = new Date();
+    const dueSoon = new Date(today.getTime() + 3 * 86400000);
+    return [
+      {
+        id: "ar1",
+        description: "Reembolso evento corporativo",
+        amount: 850.0,
+        dueDate: dueSoon.toISOString(),
+        status: "open",
+        customer: { name: "Empresa ABC Ltda" },
+        createdAt: today.toISOString(),
+        items: [
+          { id: "arit1", description: "Coffee break", quantity: 1, unitPrice: 350, total: 350 },
+          { id: "arit2", description: "Locação salão", quantity: 1, unitPrice: 500, total: 500 },
+        ],
+        receipts: [],
+      },
+      {
+        id: "ar2",
+        description: "Prestação de serviço — mini evento",
+        amount: 420.0,
+        dueDate: new Date(today.getTime() - 2 * 86400000).toISOString(),
+        status: "received",
+        customer: { name: "Associação Amigos do Parque" },
+        createdAt: today.toISOString(),
+        items: [{ id: "arit3", description: "Locação espaço", quantity: 1, unitPrice: 420, total: 420 }],
+        receipts: [
+          {
+            id: "rcv1",
+            amount: 420,
+            receivedAt: today.toISOString(),
+            account: { id: "acc_cash", name: "Caixa" },
+          },
+        ],
+      },
+    ];
+  }
+}
+
+export async function createARInvoice(payload: CreateARInvoicePayload): Promise<{ id: string }> {
+  try {
+    const { data } = await api.post("/ar-invoices", payload);
+    return data?.data ?? data ?? { id: "ar_new_mock" };
+  } catch {
+    return { id: `ar_${Math.random().toString(36).slice(2, 8)}` };
+  }
+}
+
+export async function receiveARInvoice(payload: ReceiveARInvoicePayload): Promise<{ id: string }> {
+  try {
+    const { data } = await api.post(`/ar-invoices/${payload.invoiceId}/receive`, payload);
+    return data?.data ?? data ?? { id: "arrecv_new_mock" };
+  } catch {
+    return { id: `arrecv_${Math.random().toString(36).slice(2, 8)}` };
+  }
+}
