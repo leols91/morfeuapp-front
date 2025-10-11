@@ -551,3 +551,55 @@ export async function deletePaymentMethod(code: string): Promise<{ id: string }>
     return { id: code };
   }
 }
+
+// Atualizar lançamento
+export async function updateCashLedger(
+  id: string,
+  payload: { accountId: string; entryType: "credit" | "debit"; amount: number; reference?: string | null }
+): Promise<{ id: string }> {
+  try {
+    const { data } = await api.put(`/cash-ledger/${id}`, payload);
+    return data?.data ?? data ?? { id };
+  } catch {
+    // mock ok
+    return { id };
+  }
+}
+
+// Excluir lançamento
+export async function deleteCashLedger(id: string): Promise<{ id: string }> {
+  try {
+    const { data } = await api.delete(`/cash-ledger/${id}`);
+    return data?.data ?? data ?? { id };
+  } catch {
+    return { id };
+  }
+}
+
+// Transferência entre contas (gera 2 lançamentos atômicos no backend)
+export async function transferCash(payload: {
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  reference?: string | null;
+}): Promise<{ id: string }> {
+  try {
+    const { data } = await api.post(`/cash-ledger/transfer`, payload);
+    return data?.data ?? data ?? { id: "transfer_ok" };
+  } catch {
+    // fallback mock: cria 2 lançamentos locais (não persistido)
+    await createCashLedger({
+      accountId: payload.fromAccountId,
+      entryType: "debit",
+      amount: payload.amount,
+      reference: payload.reference ?? "Transferência (origem)",
+    });
+    await createCashLedger({
+      accountId: payload.toAccountId,
+      entryType: "credit",
+      amount: payload.amount,
+      reference: payload.reference ?? "Transferência (destino)",
+    });
+    return { id: "transfer_mock" };
+  }
+}

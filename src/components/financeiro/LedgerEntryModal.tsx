@@ -4,43 +4,73 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/form/Field";
 import ModalBase from "@/components/ui/ModalBase";
-import { createCashLedger, listCashAccounts } from "@/services/financeiro";
+import { createCashLedger, listCashAccounts, updateCashLedger, type CashLedgerDTO } from "@/services/financeiro";
 import toast from "react-hot-toast";
 
 export function LedgerEntryModal({
   open,
   onClose,
   onCreated,
+  entry, // opcional: edição
 }: {
   open: boolean;
   onClose: () => void;
   onCreated?: () => void;
+  entry?: CashLedgerDTO;
 }) {
   const { data: accounts } = useQuery({
     queryKey: ["cash-accounts"],
     queryFn: listCashAccounts,
   });
 
-  const [accountId, setAccountId] = React.useState("");
-  const [entryType, setEntryType] = React.useState<"credit" | "debit">("credit");
-  const [amount, setAmount] = React.useState("");
-  const [reference, setReference] = React.useState("");
+  const [accountId, setAccountId] = React.useState(entry?.accountId ?? "");
+  const [entryType, setEntryType] = React.useState<"credit" | "debit">((entry?.entryType as any) ?? "credit");
+  const [amount, setAmount] = React.useState(entry ? String(entry.amount) : "");
+  const [reference, setReference] = React.useState(entry?.reference ?? "");
+
+  React.useEffect(() => {
+    if (entry) {
+      setAccountId(entry.accountId);
+      setEntryType(entry.entryType);
+      setAmount(String(entry.amount));
+      setReference(entry.reference ?? "");
+    } else {
+      // reset em novo
+      setAccountId("");
+      setEntryType("credit");
+      setAmount("");
+      setReference("");
+    }
+  }, [entry, open]);
 
   const salvar = useMutation({
     mutationFn: async () => {
       if (!accountId) throw new Error("Selecione a conta.");
-      const n = Number(amount.replace(",", "."));
+      const n = Number((amount || "").replace(",", "."));
       if (!(n > 0)) throw new Error("Informe um valor válido.");
-      await createCashLedger({ accountId, entryType, amount: n, reference: reference || null });
+
+      if (entry) {
+        await updateCashLedger(entry.id, {
+          accountId,
+          entryType,
+          amount: n,
+          reference: reference || null,
+        });
+      } else {
+        await createCashLedger({
+          accountId,
+          entryType,
+          amount: n,
+          reference: reference || null,
+        });
+      }
     },
     onSuccess: () => {
-      toast.success("Lançamento criado!");
+      toast.success(entry ? "Lançamento atualizado!" : "Lançamento criado!");
       onCreated?.();
       onClose();
-      setAmount("");
-      setReference("");
     },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? e?.message ?? "Falha ao lançar."),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? e?.message ?? "Falha ao salvar."),
   });
 
   if (!open) return null;
@@ -48,7 +78,7 @@ export function LedgerEntryModal({
     <ModalBase open={open} onClose={onClose}>
       <ModalBase.Card maxWidth="max-w-md">
         <ModalBase.Header>
-          <h3 className="text-lg font-semibold">Novo lançamento</h3>
+          <h3 className="text-lg font-semibold">{entry ? "Editar lançamento" : "Novo lançamento"}</h3>
         </ModalBase.Header>
         <ModalBase.Body>
           <div className="grid grid-cols-12 gap-3">
@@ -87,7 +117,7 @@ export function LedgerEntryModal({
         <ModalBase.Footer className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button onClick={() => salvar.mutate()} disabled={salvar.isPending}>
-            {salvar.isPending ? "Salvando…" : "Lançar"}
+            {salvar.isPending ? "Salvando…" : entry ? "Salvar alterações" : "Lançar"}
           </Button>
         </ModalBase.Footer>
       </ModalBase.Card>

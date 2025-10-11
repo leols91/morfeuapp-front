@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/form/Field";
 import { Th, Td, fmtDate } from "@/components/financeiro/utils";
+import { Edit, Trash2 } from "lucide-react";
 import {
   listFinanceCategories,
   createFinanceCategory,
@@ -114,13 +115,27 @@ export default function FinanceCategoriesUnifiedPage() {
                   </Td>
                   <Td className="truncate max-w-[520px]">{c.description ?? "—"}</Td>
                   <Td className="whitespace-nowrap">{c.createdAt ? fmtDate(c.createdAt) : "—"}</Td>
-                  <Td className="text-right space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => setEditItem(c)}>
-                      Editar
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setRemoveItem(c)}>
-                      Remover
-                    </Button>
+                  <Td className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
+                        title="Editar categoria"
+                        aria-label="Editar categoria"
+                        onClick={() => setEditItem(c)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
+                        title="Remover categoria"
+                        aria-label="Remover categoria"
+                        onClick={() => setRemoveItem(c)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </Td>
                 </tr>
               ))}

@@ -8,6 +8,7 @@ import { Th, Td, fmtMoney, fmtDate } from "@/components/financeiro/utils";
 import { ARInvoiceFormModal } from "@/components/financeiro/ARInvoiceFormModal";
 import { ARInvoiceDetailsModal } from "@/components/financeiro/ARInvoiceDetailsModal";
 import { ARReceiveModal } from "@/components/financeiro/ARReceiveModal";
+import { Eye } from "lucide-react";
 
 type StatusFilter = "all" | "open" | "received" | "canceled";
 
@@ -104,15 +105,15 @@ export default function ARPage() {
                           Receber
                         </Button>
                       ) : null}
+
                       <button
                         type="button"
                         className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
-                        onClick={() => {
-                          setCurrent(inv);
-                          setOpenDetails(true);
-                        }}
+                        title="Ver detalhes"
+                        aria-label="Ver detalhes"
+                        onClick={() => { setCurrent(inv); setOpenDetails(true); }}
                       >
-                        Detalhes
+                        <Eye className="w-4 h-4" />
                       </button>
                     </Td>
                   </tr>

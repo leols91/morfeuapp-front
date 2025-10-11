@@ -6,6 +6,7 @@ import { Field, Input } from "@/components/ui/form/Field";
 import { Th, Td, fmtDateTime } from "@/components/financeiro/utils";
 import { SupplierFormModal } from "@/components/financeiro/SupplierFormModal";
 import ModalBase from "@/components/ui/ModalBase";
+import { Edit, Trash2 } from "lucide-react";
 import {
   listSuppliers,
   deleteSupplier,
@@ -99,19 +100,24 @@ export default function FornecedoresPage() {
                   <Td className="truncate max-w-[220px]">{s.email ?? "—"}</Td>
                   <Td className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEditing(s);
-                          setOpenForm(true);
-                        }}
+                      <button
+                        type="button"
+                        className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
+                        title="Editar fornecedor"
+                        aria-label="Editar fornecedor"
+                        onClick={() => { setEditing(s); setOpenForm(true); }}
                       >
-                        Editar
-                      </Button>
-                      <Button size="sm" variant="danger" onClick={() => setDeleting(s)}>
-                        Excluir
-                      </Button>
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
+                        title="Excluir fornecedor"
+                        aria-label="Excluir fornecedor"
+                        onClick={() => setDeleting(s)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </Td>
                 </tr>

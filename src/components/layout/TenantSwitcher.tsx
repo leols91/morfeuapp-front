@@ -24,14 +24,15 @@ export function TenantSwitcher() {
   const options = user?.pousadas ?? [];
 
   return (
-    <div className="flex items-center gap-3">
-      <select value={active ?? ""} onChange={handleChange} className="h-10 rounded-xl border px-3">
-        <option value="" disabled>Selecione a pousada</option>
-        {options.map((p) => (
-          <option key={p.id} value={p.id}>{p.name}</option>
-        ))}
-      </select>
-      <Button size="sm" variant="outline" onClick={() => alert('Em breve: criar/gerenciar pousadas')}>Gerenciar</Button>
-    </div>
+    <select
+      value={active ?? ""}
+      onChange={handleChange}
+      className="h-9 rounded-xl border px-3 bg-white dark:bg-[#0F172A] border-subtle"
+    >
+      <option value="" disabled>Selecione a pousada</option>
+      {options.map((p) => (
+        <option key={p.id} value={p.id}>{p.name}</option>
+      ))}
+    </select>
   );
 }

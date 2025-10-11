@@ -3,6 +3,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/form/Field";
+import { Eye } from "lucide-react";
 import {
   listAPInvoices,
   listCashAccounts,
@@ -177,15 +178,15 @@ export default function APPage() {
                         Pagar
                       </Button>
                     ) : null}
+
                     <button
                       type="button"
                       className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
-                      onClick={() => {
-                        setCurrent(inv);
-                        setOpenDetails(true);
-                      }}
+                      title="Ver detalhes"
+                      aria-label="Ver detalhes"
+                      onClick={() => { setCurrent(inv); setOpenDetails(true); }}
                     >
-                      Detalhes
+                      <Eye className="w-4 h-4" />
                     </button>
                   </Td>
                 </tr>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/form/Field";
 import { Th, Td, fmtDateTime } from "@/components/financeiro/utils";
 import ModalBase from "@/components/ui/ModalBase";
+import { Edit, Trash2 } from "lucide-react";
 import {
   listPaymentMethods,
   deletePaymentMethod,
@@ -97,19 +98,24 @@ export default function PaymentMethodsPage() {
                   <Td>{m.createdAt ? fmtDateTime(m.createdAt) : "—"}</Td>
                   <Td className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEditing(m);
-                          setOpenForm(true);
-                        }}
+                      <button
+                        type="button"
+                        className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
+                        title="Editar método"
+                        aria-label="Editar método"
+                        onClick={() => { setEditing(m); setOpenForm(true); }}
                       >
-                        Editar
-                      </Button>
-                      <Button size="sm" variant="danger" onClick={() => setDeleting(m)}>
-                        Excluir
-                      </Button>
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
+                        title="Excluir método"
+                        aria-label="Excluir método"
+                        onClick={() => setDeleting(m)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </Td>
                 </tr>

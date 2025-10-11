@@ -2,6 +2,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
+import { Edit, Trash2 } from "lucide-react";
 import {
   listCashAccounts,
   createCashAccount,
@@ -55,21 +56,27 @@ export default function ContasPage() {
                   <Td className="uppercase">{a.typeCode}</Td>
                   <Td className="text-right tabular-nums">{fmtMoney(a.openingBalance)}</Td>
                   <Td>{a.createdAt ? fmtDateTime(a.createdAt) : "—"}</Td>
-                  <Td className="text-right space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setEditItem(a)}
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setRemoveItem(a)}
-                    >
-                      Excluir
-                    </Button>
+                  <Td className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
+                        title="Editar conta"
+                        aria-label="Editar conta"
+                        onClick={() => setEditItem(a)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
+                        title="Excluir conta"
+                        aria-label="Excluir conta"
+                        onClick={() => setRemoveItem(a)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </Td>
                 </tr>
               ))}
