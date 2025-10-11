@@ -447,12 +447,70 @@ export async function searchSuppliers(q: string): Promise<SupplierDTO[]> {
   }
 }
 
-export async function createSupplier(payload: CreateSupplierPayload): Promise<{ id: string }> {
+export async function listSuppliers(params?: { q?: string }): Promise<SupplierDTO[]> {
+  const qs = new URLSearchParams();
+  if (params?.q) qs.set("q", params.q);
+  try {
+    const { data } = await api.get(`/suppliers?${qs.toString()}`);
+    return data?.data ?? data ?? [];
+  } catch {
+    // fallback mock
+    return [
+      {
+        id: "sup01",
+        legalName: "Mercado Central",
+        documentId: "12.345.678/0001-01",
+        email: "contato@mercadocentral.com",
+        phone: "(11) 99999-0001",
+      },
+      {
+        id: "sup02",
+        legalName: "GLP Master",
+        documentId: "98.765.432/0001-10",
+        email: "vendas@glpmaster.com",
+        phone: "(11) 98888-2222",
+      },
+    ];
+  }
+}
+
+// Já existia (ajuste se necessário — mantendo a assinatura usada no restante do app)
+export async function createSupplier(payload: {
+  legalName: string;
+  documentId?: string | null;
+  email?: string | null;
+  phone?: string | null;
+}): Promise<{ id: string }> {
   try {
     const { data } = await api.post("/suppliers", payload);
-    return data?.data ?? data ?? { id: "sup_mock" };
+    return data?.data ?? data ?? { id: "sup_new_mock" };
   } catch {
-    // mock
-    return { id: `sup_${Math.random().toString(36).slice(2,8)}` };
+    return { id: `sup_${Math.random().toString(36).slice(2, 8)}` };
+  }
+}
+
+export async function updateSupplier(
+  id: string,
+  payload: {
+    legalName: string;
+    documentId?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  }
+): Promise<{ id: string }> {
+  try {
+    const { data } = await api.put(`/suppliers/${id}`, payload);
+    return data?.data ?? data ?? { id };
+  } catch {
+    return { id };
+  }
+}
+
+export async function deleteSupplier(id: string): Promise<{ id: string }> {
+  try {
+    const { data } = await api.delete(`/suppliers/${id}`);
+    return data?.data ?? data ?? { id };
+  } catch {
+    return { id };
   }
 }

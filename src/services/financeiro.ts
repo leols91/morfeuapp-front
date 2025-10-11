@@ -489,3 +489,65 @@ export async function deleteCashAccount(id: string): Promise<{ id: string }> {
     return { id };
   }
 }
+
+
+/* =========================
+ * Métodos de pagamento
+ * ========================= */
+export type PaymentMethodDTO = {
+  code: string;           // PK (ex.: PIX, DINHEIRO, CARTAO_CREDITO)
+  description: string;
+  createdAt?: string;
+};
+
+export async function listPaymentMethods(params?: { q?: string }): Promise<PaymentMethodDTO[]> {
+  const qs = new URLSearchParams();
+  if (params?.q) qs.set("q", params.q);
+  try {
+    const { data } = await api.get(`/payment-methods?${qs.toString()}`);
+    return data?.data ?? data ?? [];
+  } catch {
+    // mock
+    return [
+      { code: "DINHEIRO", description: "Dinheiro", createdAt: new Date().toISOString() },
+      { code: "PIX", description: "Pix", createdAt: new Date().toISOString() },
+      { code: "CARTAO_CREDITO", description: "Cartão de crédito", createdAt: new Date().toISOString() },
+    ];
+  }
+}
+
+export async function createPaymentMethod(payload: {
+  code: string;
+  description: string;
+}): Promise<{ id: string }> {
+  try {
+    const { data } = await api.post("/payment-methods", payload);
+    const id = data?.data?.code ?? data?.code ?? payload.code;
+    return { id };
+  } catch {
+    return { id: payload.code };
+  }
+}
+
+export async function updatePaymentMethod(
+  code: string,
+  payload: { description: string }
+): Promise<{ id: string }> {
+  try {
+    const { data } = await api.put(`/payment-methods/${code}`, payload);
+    const id = data?.data?.code ?? data?.code ?? code;
+    return { id };
+  } catch {
+    return { id: code };
+  }
+}
+
+export async function deletePaymentMethod(code: string): Promise<{ id: string }> {
+  try {
+    const { data } = await api.delete(`/payment-methods/${code}`);
+    const id = data?.data?.code ?? data?.code ?? code;
+    return { id };
+  } catch {
+    return { id: code };
+  }
+}
