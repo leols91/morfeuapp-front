@@ -28,8 +28,7 @@ const SECTIONS: Section[] = [
     title: "Cadastros",
     items: [
       { label: "Contas (caixas)", href: "/financeiro/contas" },
-      { label: "Despesas (categorias)", href: "/financeiro/despesas" },
-      { label: "Receitas (categorias)", href: "/financeiro/receitas" },
+      { label: "Categorias (despesas/receitas)", href: "/financeiro/categorias" },
       { label: "Fornecedores", href: "/financeiro/fornecedores" },
       { label: "Métodos de pagamento", href: "/financeiro/metodos" },
     ],

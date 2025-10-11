@@ -313,3 +313,179 @@ export async function receiveARInvoice(payload: ReceiveARInvoicePayload): Promis
     return { id: `arrecv_${Math.random().toString(36).slice(2, 8)}` };
   }
 }
+
+// --- Tipos ---
+export type APCategoryDTO = {
+  id: string;
+  name: string;
+  description?: string | null;
+  createdAt?: string;
+};
+
+// --- Categorias de despesa (APCategory) ---
+export async function listAPCategories(): Promise<APCategoryDTO[]> {
+  try {
+    const { data } = await api.get("/ap-categories");
+    return data?.data ?? data ?? [];
+  } catch {
+    // mock
+    return [
+      { id: "cat_insumos", name: "Insumos", description: "Compras de insumos", createdAt: new Date().toISOString() },
+      { id: "cat_utilidades", name: "Utilidades", description: "Energia, água, internet…", createdAt: new Date().toISOString() },
+      { id: "cat_servicos", name: "Serviços", description: "Serviços contratados", createdAt: new Date().toISOString() },
+    ];
+  }
+}
+
+export async function createAPCategory(payload: { name: string; description?: string | null }): Promise<{ id: string }> {
+  try {
+    const { data } = await api.post("/ap-categories", payload);
+    return data?.data ?? data ?? { id: "cat_new_mock" };
+  } catch {
+    return { id: `cat_${Math.random().toString(36).slice(2, 8)}` };
+  }
+}
+
+export async function updateAPCategory(
+  id: string,
+  payload: { name: string; description?: string | null }
+): Promise<{ id: string }> {
+  try {
+    const { data } = await api.put(`/ap-categories/${id}`, payload);
+    return data?.data ?? data ?? { id };
+  } catch {
+    return { id };
+  }
+}
+
+export async function deleteAPCategory(id: string): Promise<{ id: string }> {
+  try {
+    const { data } = await api.delete(`/ap-categories/${id}`);
+    return data?.data ?? data ?? { id };
+  } catch {
+    return { id };
+  }
+}
+// =========================
+// Receitas: Categorias (AR / Revenue)
+// =========================
+export type RevenueCategoryDTO = {
+  id: string;
+  name: string;
+  description?: string | null;
+  createdAt?: string;
+};
+
+export async function listRevenueCategories(): Promise<RevenueCategoryDTO[]> {
+  try {
+    const { data } = await api.get("/ar-categories");
+    return data?.data ?? data ?? [];
+  } catch {
+    // mock
+    return [
+      { id: "rev_hospedagem", name: "Hospedagem", description: "Receitas de diárias", createdAt: new Date().toISOString() },
+      { id: "rev_consumo", name: "Consumos", description: "Consumos internos / frigobar / bar", createdAt: new Date().toISOString() },
+      { id: "rev_eventos", name: "Eventos", description: "Locações e eventos", createdAt: new Date().toISOString() },
+    ];
+  }
+}
+
+export async function createRevenueCategory(payload: { name: string; description?: string | null }): Promise<{ id: string }> {
+  try {
+    const { data } = await api.post("/ar-categories", payload);
+    return data?.data ?? data ?? { id: "rev_new_mock" };
+  } catch {
+    return { id: `rev_${Math.random().toString(36).slice(2, 8)}` };
+  }
+}
+
+export async function updateRevenueCategory(
+  id: string,
+  payload: { name: string; description?: string | null }
+): Promise<{ id: string }> {
+  try {
+    const { data } = await api.put(`/ar-categories/${id}`, payload);
+    return data?.data ?? data ?? { id };
+  } catch {
+    return { id };
+  }
+}
+
+export async function deleteRevenueCategory(id: string): Promise<{ id: string }> {
+  try {
+    const { data } = await api.delete(`/ar-categories/${id}`);
+    return data?.data ?? data ?? { id };
+  } catch {
+    return { id };
+  }
+}
+
+// =========================
+// Unificado: Categorias (Receita / Despesa)
+// =========================
+export type FinanceCategoryDTO = {
+  id: string;
+  name: string;
+  description?: string | null;
+  createdAt?: string;
+  kind: "expense" | "revenue";
+};
+
+// Lista unificada (busca as duas coleções e normaliza)
+export async function listFinanceCategories(): Promise<FinanceCategoryDTO[]> {
+  const [ap, ar] = await Promise.all([listAPCategories(), listRevenueCategories()]);
+  const mapAP = ap.map((c) => ({ ...c, kind: "expense" as const }));
+  const mapAR = ar.map((c) => ({ ...c, kind: "revenue" as const }));
+  return [...mapAP, ...mapAR].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+}
+
+// Create
+export async function createFinanceCategory(payload: {
+  name: string;
+  description?: string | null;
+  kind: "expense" | "revenue";
+}): Promise<{ id: string }> {
+  if (payload.kind === "expense") {
+    return await createAPCategory({ name: payload.name, description: payload.description ?? null });
+  }
+  return await createRevenueCategory({ name: payload.name, description: payload.description ?? null });
+}
+
+// Update (precisa saber o kind atual)
+export async function updateFinanceCategory(
+  id: string,
+  kind: "expense" | "revenue",
+  payload: { name: string; description?: string | null }
+): Promise<{ id: string }> {
+  if (kind === "expense") {
+    return await updateAPCategory(id, { name: payload.name, description: payload.description ?? null });
+  }
+  return await updateRevenueCategory(id, { name: payload.name, description: payload.description ?? null });
+}
+
+// Delete (precisa saber o kind atual)
+export async function deleteFinanceCategory(id: string, kind: "expense" | "revenue"): Promise<{ id: string }> {
+  if (kind === "expense") return await deleteAPCategory(id);
+  return await deleteRevenueCategory(id);
+}
+
+export async function updateCashAccount(
+  id: string,
+  payload: { name: string; typeCode: string; openingBalance: number }
+): Promise<{ id: string }> {
+  try {
+    const { data } = await api.put(`/cash-accounts/${id}`, payload);
+    return data?.data ?? data ?? { id };
+  } catch {
+    return { id };
+  }
+}
+
+export async function deleteCashAccount(id: string): Promise<{ id: string }> {
+  try {
+    const { data } = await api.delete(`/cash-accounts/${id}`);
+    return data?.data ?? data ?? { id };
+  } catch {
+    return { id };
+  }
+}
