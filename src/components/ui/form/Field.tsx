@@ -4,8 +4,8 @@ import { cx } from "./cx";
 import { colors, fieldWrap, inputBase, selectBase, textareaBase } from "./styles";
 
 type BaseProps = {
-  label?: string;
-  hint?: string;
+  label?: React.ReactNode; // ← antes era string
+  hint?: React.ReactNode;  // ← idem
   error?: string;
   className?: string;
   children?: React.ReactNode;

@@ -20,13 +20,16 @@ export const fieldWrap =
   colors.border + " " + colors.borderHover + " " + colors.ring;
 
 export const inputBase =
-  "h-10 w-full rounded-xl bg-transparent px-3 outline-none border-0 ring-0 text-[15px]";
+  "h-10 w-full rounded-xl bg-transparent px-3 outline-none border-0 ring-0 text-[15px] " +
+  "placeholder:text-gray-400 dark:placeholder:text-gray-500";
 
 export const selectBase =
-  "h-10 w-full rounded-xl bg-transparent px-3 pr-9 outline-none border-0 ring-0 appearance-none text-[15px]";
+  "h-10 w-full rounded-xl bg-transparent px-3 pr-9 outline-none border-0 ring-0 appearance-none text-[15px] " +
+  "placeholder:text-gray-400 dark:placeholder:text-gray-500";
 
 export const textareaBase =
-  "w-full rounded-xl bg-transparent px-3 py-2 outline-none border-0 ring-0 text-[15px]";
+  "w-full rounded-xl bg-transparent px-3 py-2 outline-none border-0 ring-0 text-[15px] " +
+  "placeholder:text-gray-400 dark:placeholder:text-gray-500";
 
 export const sectionWrap =
   "surface-2 rounded-2xl transition-colors";
