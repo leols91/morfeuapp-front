@@ -1,10 +1,19 @@
-// src/services/acomodacoes.ts
 import { api } from "@/lib/api";
+import type { ListAcomodacoesParams, AcomodacaoDTO } from "@/types/acomodacao";
 
-/* ===========================================
- *  TIPOS (apenas locais deste service)
- * =========================================== */
-export type RoomTypeDTO = { id: string; name: string };
+/* ============== TIPOS ============== */
+export type AmenityDTO = { id: string; name: string };
+
+export type RoomTypeDTO = {
+  id: string;
+  name: string;
+  description?: string | null;
+  occupancyMode: "private" | "shared" | string;
+  baseOccupancy: number;
+  maxOccupancy: number;
+  amenities?: { amenity: AmenityDTO }[]; // vem do backend já expandido
+};
+
 export type StatusDTO   = { code: string; description: string };
 
 export type CreateQuartoPayload = {
@@ -12,51 +21,178 @@ export type CreateQuartoPayload = {
   code: string;
   floor?: string | null;
   description?: string | null;
-  roomStatusCode: string;
-  housekeepingStatusCode: string;
+
+  // overrides (opcionais)
+  baseOccupancy?: number | null;
+  maxOccupancy?: number | null;
+
+  // status (backend tem defaults)
+  roomStatusCode?: string;
+  housekeepingStatusCode?: string;
 };
 
-// DTO básico do Quarto (conforme backend)
 export type QuartoDTO = {
   id: string;
+  pousadaId: string;
   roomTypeId: string;
   code: string;
   floor: string | null;
   description: string | null;
+
+  // overrides (opcionais)
+  baseOccupancy: number | null;
+  maxOccupancy: number | null;
+
   roomStatusCode: string;
   housekeepingStatusCode: string;
   createdAt?: string;
   updatedAt?: string;
+
+  // expandido no include
+  roomType?: Pick<RoomTypeDTO, "id"|"name"|"occupancyMode"|"baseOccupancy"|"maxOccupancy">;
 };
 
-export type UpdateQuartoPayload = CreateQuartoPayload;
+export type UpdateQuartoPayload = {
+  roomTypeId: string;
+  code: string;
+  floor?: string | null;
+  description?: string | null;
+  roomStatusCode: string;
+  housekeepingStatusCode: string;
 
-/* ===========================================
- *  NOVOS ENDPOINTS (backend novo)
- * =========================================== */
+  // overrides (opcionais)
+  baseOccupancy?: number | null;
+  maxOccupancy?: number | null;
+};
 
-// Tipos de quarto
-export async function listRoomTypes(): Promise<RoomTypeDTO[]> {
-  try {
-    const { data } = await api.get("/room-types");
-    // espera { data: Array<{ id, name }> } do backend
-    return data?.data ?? [];
-  } catch {
-    // fallback mock para desenvolvimento
-    return [
-      { id: "rt_std", name: "Quarto Privativo" },
-      { id: "rt_shd", name: "Quarto Compartilhado" },
-    ];
-  }
+/* ============== QUARTOS ============== */
+
+// Lista quartos de uma pousada
+export async function listQuartos(pousadaId: string): Promise<QuartoDTO[]> {
+  const { data } = await api.get(`/pousadas/${pousadaId}/quartos`);
+  return data?.data ?? data ?? [];
 }
 
-// Status de quarto (ocupação)
+// Criar Quarto
+export async function createQuarto(
+  pousadaId: string,
+  payload: CreateQuartoPayload
+): Promise<{ id: string }> {
+  if (!pousadaId) throw new Error("ID da pousada não informado.");
+
+  const body = {
+    roomTypeId: payload.roomTypeId,
+    code: payload.code,
+    floor: payload.floor ?? null,
+    description: payload.description ?? null,
+    baseOccupancy: payload.baseOccupancy ?? null,
+    maxOccupancy: payload.maxOccupancy ?? null,
+    roomStatusCode: payload.roomStatusCode ?? "available",
+    housekeepingStatusCode: payload.housekeepingStatusCode ?? "clean",
+  };
+
+  const { data } = await api.post(`/pousadas/${pousadaId}/quartos`, body);
+  if (data?.id) return { id: data.id };
+  if (data?.data?.id) return { id: data.data.id };
+  throw new Error("Resposta inesperada do servidor ao criar quarto.");
+}
+
+// Obter Quarto por id
+export async function getQuarto(id: string): Promise<QuartoDTO> {
+  const { data } = await api.get(`/quartos/${id}`);
+  return data?.data ?? data;
+}
+
+// Atualizar Quarto
+export async function updateQuarto(id: string, payload: UpdateQuartoPayload): Promise<{ id: string }> {
+  const body = {
+    roomTypeId: payload.roomTypeId,
+    code: payload.code,
+    floor: payload.floor ?? null,
+    description: payload.description ?? null,
+    baseOccupancy: payload.baseOccupancy ?? null,
+    maxOccupancy: payload.maxOccupancy ?? null,
+    roomStatusCode: payload.roomStatusCode,
+    housekeepingStatusCode: payload.housekeepingStatusCode,
+  };
+  const { data } = await api.patch(`/quartos/${id}`, body);
+  return data?.data ?? data;
+}
+
+/* ============== ROOM TYPES ============== */
+
+// Tipos de quarto (escopado por pousada), com amenities
+export async function listRoomTypes(pousadaId?: string): Promise<RoomTypeDTO[]> {
+  try {
+    if (pousadaId) {
+      const { data } = await api.get(`/pousadas/${pousadaId}/room-types?include=amenities`);
+      return data?.data ?? data ?? [];
+    }
+  } catch {}
+  // fallback global
+  const { data } = await api.get(`/room-types?include=amenities`);
+  return data?.data ?? data ?? [];
+}
+
+export async function createRoomType(
+  pousadaId: string,
+  body: {
+    name: string;
+    description?: string | null;
+    occupancyMode: "private" | "shared" | string;
+    baseOccupancy: number;
+    maxOccupancy: number;
+  }
+): Promise<{ id: string }> {
+  const { data } = await api.post(`/pousadas/${pousadaId}/room-types`, body);
+  return data?.data ?? data;
+}
+
+export async function updateRoomType(
+  roomTypeId: string,
+  body: Partial<{
+    name: string;
+    description?: string | null;
+    occupancyMode: "private" | "shared" | string;
+    baseOccupancy: number;
+    maxOccupancy: number;
+  }>
+) {
+  const { data } = await api.patch(`/room-types/${roomTypeId}`, body);
+  return data?.data ?? data;
+}
+
+/* ============== AMENITIES ============== */
+
+export async function listAmenities(pousadaId: string): Promise<AmenityDTO[]> {
+  const { data } = await api.get(`/pousadas/${pousadaId}/amenities`);
+  return data?.data ?? data ?? [];
+}
+
+export async function createAmenity(pousadaId: string, name: string) {
+  const { data } = await api.post(`/pousadas/${pousadaId}/amenities`, { name });
+  return data?.data ?? data;
+}
+
+export async function deleteAmenity(amenityId: string) {
+  const { data } = await api.delete(`/amenities/${amenityId}`);
+  return data?.data ?? data;
+}
+
+// vincular amenity ↔ roomType
+export async function addAmenityToRoomType(roomTypeId: string, amenityId: string) {
+  const { data } = await api.post(`/room-types/${roomTypeId}/amenities`, { amenityId });
+  return data?.data ?? data;
+}
+
+/* ============== STATUSES ============== */
+
 export async function listRoomStatuses(): Promise<StatusDTO[]> {
   try {
     const { data } = await api.get("/room-statuses");
-    // espera { data: Array<{ code, description }> }
-    return data?.data ?? [];
+    return data?.data ?? data ?? [];
   } catch {
+    // fallback estático (mantém a tela funcionando)
     return [
       { code: "available",   description: "Disponível" },
       { code: "occupied",    description: "Ocupado" },
@@ -65,12 +201,12 @@ export async function listRoomStatuses(): Promise<StatusDTO[]> {
   }
 }
 
-// Status de governança/housekeeping
 export async function listHousekeepingStatuses(): Promise<StatusDTO[]> {
   try {
     const { data } = await api.get("/housekeeping-statuses");
-    return data?.data ?? [];
+    return data?.data ?? data ?? [];
   } catch {
+    // fallback estático
     return [
       { code: "clean",     description: "Limpo" },
       { code: "dirty",     description: "Sujo" },
@@ -80,116 +216,46 @@ export async function listHousekeepingStatuses(): Promise<StatusDTO[]> {
   }
 }
 
-// Criar Quarto
-export async function createQuarto(payload: CreateQuartoPayload): Promise<{ id: string }> {
-  const { data } = await api.post("/quartos", payload);
-  // espere { id, ... } ou { data: { id, ... } }
-  return data?.data ?? data;
-}
+/* ============== LISTAGEM (ACOMODAÇÕES) ============== */
 
-// Obter Quarto por id
-export async function getQuarto(id: string): Promise<QuartoDTO> {
-  try {
-    const { data } = await api.get(`/quartos/${id}`);
-    // { data: { ...quarto } } ou direto { ...quarto }
-    return data?.data ?? data;
-  } catch {
-    // fallback mock: útil enquanto o backend não está plugado
-    return {
-      id,
-      roomTypeId: "rt_std",
-      code: "101",
-      floor: "1",
-      description: "Quarto com janela para o jardim.",
-      roomStatusCode: "available",
-      housekeepingStatusCode: "clean",
-    };
-  }
-}
-
-// Atualizar Quarto
-export async function updateQuarto(id: string, payload: UpdateQuartoPayload): Promise<{ id: string }> {
-  const { data } = await api.patch(`/quartos/${id}`, payload);
-  // responde { data: { id, ... } } ou { id, ... }
-  return data?.data ?? data;
-}
-
-/* ===========================================
- *  APIs ANTIGAS QUE VOCÊ JÁ USAVA
- *  (mantidas para compatibilidade)
- * =========================================== */
-
-import type { ListAcomodacoesParams, AcomodacaoDTO } from "@/types/acomodacao";
-
-/** Lista acomodações (mock + /api/acomodacoes local até o backend ligar) */
+// Retorna a lista para a página /acomodacoes com suporte a filtros.
+// A API pode responder como { data: [...] } ou diretamente [...], tratamos os dois casos.
 export async function listAcomodacoes(
   params: ListAcomodacoesParams
 ): Promise<{ data: AcomodacaoDTO[] }> {
-  const qs = new URLSearchParams();
-  if (params.q) qs.set("q", params.q);
-  if (params.status && params.status !== "all") qs.set("status", params.status);
-  if (params.tipo && params.tipo !== "all") qs.set("type", params.tipo);
-  if (params.capMin != null) qs.set("capMin", String(params.capMin));
-  if (params.capMax != null) qs.set("capMax", String(params.capMax));
-  if (params.priceMin != null) qs.set("priceMin", String(params.priceMin));
-  if (params.priceMax != null) qs.set("priceMax", String(params.priceMax));
+  // Monta os query params ignorando valores "all" e undefined
+  const qp: Record<string, any> = {};
+  if (params?.q) qp.q = params.q;
+  if (params?.status && params.status !== "all") qp.status = params.status;
+  if (params?.tipo && params.tipo !== "all") qp.tipo = params.tipo;
+  if (params?.capMin != null) qp.capMin = params.capMin;
+  if (params?.capMax != null) qp.capMax = params.capMax;
+  if (params?.priceMin != null) qp.priceMin = params.priceMin;
+  if (params?.priceMax != null) qp.priceMax = params.priceMax;
 
   try {
-    const res = await fetch(`/api/acomodacoes?${qs.toString()}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("bad status");
-    const json = await res.json();
-    return { data: json?.data ?? [] };
+    const { data } = await api.get("/acomodacoes", { params: qp });
+    if (Array.isArray(data)) return { data };
+    if (data?.data && Array.isArray(data.data)) return { data: data.data };
+    return { data: [] };
   } catch {
-    // fallback até integrar de vez
-    return {
-      data: [
-        {
-          id: "room_101",
-          name: "Quarto 101",
-          type: "room",
-          status: "available",
-          capacity: 2,
-          basePrice: 260,
-          amenities: ["Ar-condicionado", "Wi-Fi", "Banheiro privativo"],
-          externalCode: "INT-101",
-          description: "Quarto standard no 1º andar",
-        },
-        {
-          id: "room_203",
-          name: "Quarto 203",
-          type: "room",
-          status: "occupied",
-          capacity: 3,
-          basePrice: 320,
-          amenities: ["Varanda", "Wi-Fi"],
-          description: "Vista parcial da cidade",
-        },
-        {
-          id: "bed_a1",
-          name: "Beliche A1",
-          type: "bed",
-          status: "maintenance",
-          capacity: 1,
-          basePrice: 80,
-          amenities: ["Tomada individual", "Cortina"],
-          description: "Cama em dormitório misto",
-        },
-      ],
-    };
+    // fallback seguro: vazio (mantém a tela funcionando)
+    return { data: [] };
   }
 }
 
-/** Cria acomodação (API antiga; mantido se ainda for usado em alguma tela) */
-export async function createAcomodacao(payload: {
-  kind: "room" | "bed";
-  label: string;
-  status: "available" | "occupied" | "maintenance";
-  capacity: number;
-  price: number | null;
-  description?: string | null;
-  amenities?: string[];
-  notes?: string | null;
-}) {
-  const { data } = await api.post("/acomodacoes", payload);
-  return data;
+// Obter um RoomType por id
+export async function getRoomType(roomTypeId: string): Promise<RoomTypeDTO> {
+  const { data } = await api.get(`/room-types/${roomTypeId}`);
+  return data?.data ?? data;
+}
+
+// Remover RoomType (opcional, só se quiser botão de excluir)
+export async function deleteRoomType(roomTypeId: string): Promise<void> {
+  await api.delete(`/room-types/${roomTypeId}`);
+}
+
+export async function updateAmenity(amenityId: string, name: string) {
+  const { data } = await api.patch(`/amenities/${amenityId}`, { name });
+  return data?.data ?? data;
 }

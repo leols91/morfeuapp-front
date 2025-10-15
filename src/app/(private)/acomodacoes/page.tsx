@@ -9,6 +9,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { AcomodacoesTable } from "@/components/acomodacoes/AcomodacoesTable";
 import { ViewAcomodacaoModal } from "@/components/acomodacoes/ViewAcomodacaoModal";
+import AcomodacoesMenu from "@/components/acomodacoes/AcomodacoesMenu";
 
 const statusOptions = [
   { value: "all", label: "Todos" },
@@ -78,7 +79,10 @@ export default function AcomodacoesPage() {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Acomodações</h1>
+        <div className="flex items-center">
+          <h1 className="text-xl font-semibold">Acomodações</h1>
+          <AcomodacoesMenu />
+        </div>
         <Link href={"/acomodacoes/nova" as Route}>
           <Button>Novo quarto</Button>
         </Link>
