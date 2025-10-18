@@ -10,8 +10,11 @@ import { getActivePousadaId } from "@/lib/tenants";
 import {
   listAmenities,
   createAmenity,
-  addAmenityToRoomType,
+  addAmenityToRoom,
+  removeAmenityFromRoom,
+  getQuarto,
   type AmenityDTO,
+  type QuartoDTO,
 } from "@/services/acomodacoes";
 import toast from "react-hot-toast";
 
@@ -21,16 +24,19 @@ type QuartoFormProps = {
     data?: (RoomType & { amenities?: { amenity: AmenityDTO }[] })[];
     isLoading: boolean;
     isError: boolean;
-    refetch?: () => void; // ← opcional, se o caller passar de react-query
+    refetch?: () => void;
   };
   roomStatusesQ: { data?: StatusOpt[]; isLoading: boolean; isError: boolean };
   hkStatusesQ: { data?: StatusOpt[]; isLoading: boolean; isError: boolean };
   loadingOpts?: boolean;
   mode: "create" | "edit";
-  refetchRoomTypes?: () => void; // ← opcional também
+  /** Necessário para gerenciar amenities override do QUARTO (edit mode) */
+  quartoId?: string;
+
+  /** CREATE mode: o parent usa para receber a lista staged */
+  onStagedAmenitiesChange?: (ids: string[]) => void;
 };
 
-/** Campos que este form manipula (para tipar o RHF) */
 type QuartoFormFields = {
   roomTypeId: string;
   code: string;
@@ -39,7 +45,6 @@ type QuartoFormFields = {
   description?: string;
   roomStatusCode: string;
   housekeepingStatusCode: string;
-  amenities?: string;
   baseOccupancy?: number;
   maxOccupancy?: number;
 };
@@ -49,22 +54,54 @@ export function QuartoForm({
   roomTypesQ,
   roomStatusesQ,
   hkStatusesQ,
-  refetchRoomTypes,
+  mode,
+  quartoId,
+  onStagedAmenitiesChange,
 }: QuartoFormProps) {
   const form = useFormContext<QuartoFormFields>();
-
   const err = <K extends keyof QuartoFormFields>(k: K): string | undefined => {
     const e = (form.formState.errors as FieldErrors<QuartoFormFields>)[k];
     return (e as any)?.message as string | undefined;
   };
 
-  // tipo selecionado — p/ placeholders + amenities
+  // Tipo selecionado
   const selectedRoomType = React.useMemo(() => {
     const idSel = form.getValues("roomTypeId");
     return (roomTypesQ.data ?? []).find((t) => t.id === idSel);
   }, [roomTypesQ.data, form.watch("roomTypeId")]);
 
-  // ======= Amenities Modal state =======
+  const baseOverride = form.watch("baseOccupancy");
+  const maxOverride = form.watch("maxOccupancy");
+  const effectiveBase = baseOverride || selectedRoomType?.baseOccupancy || undefined;
+  const effectiveMax = maxOverride || selectedRoomType?.maxOccupancy || undefined;
+
+  // ----- AMENITIES QUARTO (edit) & STAGED (create) -----
+  const [roomAmenities, setRoomAmenities] = React.useState<AmenityDTO[]>([]); // edit mode (carregado da API)
+  const [stagedAmenities, setStagedAmenities] = React.useState<AmenityDTO[]>([]); // create mode (local)
+  const canManageRoomAmenities = mode === "edit" && !!quartoId;
+
+  async function refetchRoomAmenities() {
+    if (!quartoId) return;
+    try {
+      const q: QuartoDTO = await getQuarto(quartoId);
+      const overrides = (q.amenities ?? []).map((x) => x.amenity);
+      setRoomAmenities(overrides);
+    } catch {
+      /* silencia */
+    }
+  }
+
+  React.useEffect(() => {
+    if (canManageRoomAmenities) refetchRoomAmenities();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canManageRoomAmenities, quartoId]);
+
+  React.useEffect(() => {
+    // sobe ids staged para o parent (create flow)
+    onStagedAmenitiesChange?.(stagedAmenities.map((a) => a.id));
+  }, [stagedAmenities, onStagedAmenitiesChange]);
+
+  // ----- MODAL: listar/criar amenity e anexar (edit) ou "staging" (create) -----
   const [amenityModal, setAmenityModal] = React.useState(false);
   const [amenities, setAmenities] = React.useState<AmenityDTO[]>([]);
   const [loadingAm, setLoadingAm] = React.useState(false);
@@ -75,6 +112,7 @@ export function QuartoForm({
   }, [pousada]);
 
   async function openAmenityModal() {
+    // agora abre tanto em create quanto em edit
     setAmenityModal(true);
     if (!pousada) return;
     setLoadingAm(true);
@@ -90,14 +128,8 @@ export function QuartoForm({
 
   async function handleAddAmenity(params: { existingAmenityId?: string; newAmenityName?: string }) {
     try {
-      const rtId = selectedRoomType?.id;
-      if (!rtId) {
-        toast.error("Selecione um tipo de quarto antes.");
-        return;
-      }
+      // 1) Garante amenityId (cria se for nova)
       let amenityId = params.existingAmenityId;
-
-      // cria nova se necessário
       if (!amenityId) {
         const name = (params.newAmenityName ?? "").trim();
         if (!pousada || !name) {
@@ -105,34 +137,59 @@ export function QuartoForm({
           return;
         }
         const created = await createAmenity(pousada, name);
-        amenityId = created?.id ?? created; // backend pode devolver data{id}
+        amenityId = created?.id ?? created;
       }
-
       if (!amenityId) throw new Error("ID de comodidade ausente.");
 
-      await addAmenityToRoomType(rtId, amenityId);
-      toast.success("Comodidade vinculada ao tipo.");
+      // 2) Se EDIT: anexa direto na API do quarto
+      if (mode === "edit" && quartoId) {
+        await addAmenityToRoom(quartoId, amenityId);
+        toast.success("Comodidade adicionada ao quarto.");
+        await refetchRoomAmenities();
+      } else {
+        // 3) Se CREATE: apenas "staging" local (já mostra na UI)
+        const chosen = (amenities.find((a) => a.id === amenityId) ??
+          { id: amenityId, name: params.newAmenityName?.trim() ?? "Amenity" }) as AmenityDTO;
 
-      // refetch roomTypes (atualiza a lista visual)
-      refetchRoomTypes?.();
-      roomTypesQ.refetch?.();
+        setStagedAmenities((prev) => {
+          if (prev.some((x) => x.id === chosen.id)) return prev; // evita duplicata
+          return [...prev, chosen];
+        });
+        toast.success("Comodidade adicionada (será vinculada ao salvar).");
+      }
 
       setAmenityModal(false);
     } catch (e: any) {
-      toast.error(e?.response?.data?.message ?? "Falha ao vincular comodidade.");
+      toast.error(e?.response?.data?.message ?? "Falha ao adicionar comodidade.");
     }
   }
 
-  // helper para chips de amenities do tipo
-  const chips = (selectedRoomType?.amenities ?? []).map((ra) => ra.amenity);
+  async function handleRemoveRoomAmenity(amenityId: string) {
+    if (mode === "edit" && quartoId) {
+      try {
+        await removeAmenityFromRoom(quartoId, amenityId);
+        toast.success("Comodidade removida do quarto.");
+        await refetchRoomAmenities();
+      } catch (e: any) {
+        toast.error(e?.response?.data?.message ?? "Falha ao remover comodidade.");
+      }
+    } else {
+      // remover do staging (create mode)
+      setStagedAmenities((prev) => prev.filter((a) => a.id !== amenityId));
+    }
+  }
 
-  // ======= UI =======
+  // Herdadas do tipo
+  const inherited = (selectedRoomType?.amenities ?? []).map((ra) => ra.amenity);
+
+  // ===================== UI =====================
   return (
     <>
-      {/* BLOCO 1 - dados básicos */}
+      {/* IDENTIFICAÇÃO */}
       <div className="surface-2">
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-12 md:col-span-3">
+        <div className="text-sm font-semibold mb-1">Identificação</div>
+        <div className="grid grid-cols-12 gap-4 mt-3">
+          <div className="col-span-12 md:col-span-4">
             <Field label="Tipo de quarto" error={err("roomTypeId")}>
               <Select
                 {...form.register("roomTypeId")}
@@ -154,73 +211,78 @@ export function QuartoForm({
             </Field>
           </div>
 
-          <div className="col-span-12 md:col-span-2">
+          <div className="col-span-6 md:col-span-2">
             <Field label="Código / Número" error={err("code")}>
-              <Input placeholder="Ex.: 101, 202B" {...form.register("code")} />
+              <Input placeholder="Ex.: 101" {...form.register("code")} />
             </Field>
           </div>
 
-          <div className="col-span-12 md:col-span-5">
-            <Field label="Nome do quarto (opcional)">
-              <Input
-                placeholder="Ex.: Suíte Master, Standard Vista Mar"
-                {...form.register("roomName")}
-              />
+          <div className="col-span-12 md:col-span-4">
+            <Field label="Nome (opcional)">
+              <Input placeholder="Ex.: Suíte Master" {...form.register("roomName")} />
             </Field>
           </div>
 
-          <div className="col-span-12 md:col-span-2">
+          <div className="col-span-6 md:col-span-2">
             <Field label="Andar (opcional)">
-              <Input placeholder="Ex.: Térreo, 1, 2, 3…" {...form.register("floor")} />
+              <Input placeholder="Ex.: Térreo, 1, 2…" {...form.register("floor")} />
             </Field>
           </div>
         </div>
       </div>
 
-      {/* BLOCO 2 – Capacidade */}
+      {/* CAPACIDADE */}
       <div className="surface-2">
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-12 md:col-span-3">
-            <Field label="Capacidade base (override)">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-semibold mb-1">Capacidade</div>
+            <div className="text-[12px] opacity-70 -mt-1">
+              Deixe em branco para usar o padrão do tipo selecionado.
+            </div>
+          </div>
+          <CapacityBadge
+            typeBase={selectedRoomType?.baseOccupancy}
+            typeMax={selectedRoomType?.maxOccupancy}
+          />
+        </div>
+
+        <div className="grid grid-cols-12 gap-4 mt-3">
+          <div className="col-span-6 md:col-span-3">
+            <Field label="Base (override)">
               <Input
                 type="number"
                 min={1}
                 placeholder={
-                  selectedRoomType?.baseOccupancy
-                    ? `Padrão: ${selectedRoomType.baseOccupancy}`
-                    : "Deixe em branco para padrão"
+                  selectedRoomType?.baseOccupancy ? `Padrão: ${selectedRoomType.baseOccupancy}` : "—"
                 }
                 {...form.register("baseOccupancy", { valueAsNumber: true })}
               />
-              <div className="text-[11px] opacity-70 mt-1">
-                Se vazio, usa o padrão do tipo de quarto.
-              </div>
             </Field>
           </div>
 
-          <div className="col-span-12 md:col-span-3">
-            <Field label="Capacidade máxima (override)">
+          <div className="col-span-6 md:col-span-3">
+            <Field label="Máxima (override)">
               <Input
                 type="number"
                 min={1}
                 placeholder={
-                  selectedRoomType?.maxOccupancy
-                    ? `Padrão: ${selectedRoomType.maxOccupancy}`
-                    : "Deixe em branco para padrão"
+                  selectedRoomType?.maxOccupancy ? `Padrão: ${selectedRoomType.maxOccupancy}` : "—"
                 }
                 {...form.register("maxOccupancy", { valueAsNumber: true })}
               />
-              <div className="text-[11px] opacity-70 mt-1">
-                Se vazio, usa o padrão do tipo de quarto.
-              </div>
             </Field>
+          </div>
+
+          <div className="col-span-12 md:col-span-6 flex items-end">
+            <EffectiveCapacity base={effectiveBase} max={effectiveMax} />
           </div>
         </div>
       </div>
 
-      {/* BLOCO 3 – Status */}
+      {/* STATUS */}
       <div className="surface-2">
-        <div className="grid grid-cols-12 gap-4">
+        <div className="text-sm font-semibold mb-1">Status</div>
+        <div className="grid grid-cols-12 gap-4 mt-3">
           <div className="col-span-12 md:col-span-6 lg:col-span-4">
             <Field label="Status do quarto" error={err("roomStatusCode")}>
               <Select
@@ -240,7 +302,7 @@ export function QuartoForm({
           </div>
 
           <div className="col-span-12 md:col-span-6 lg:col-span-4">
-            <Field label="Status de governança" error={err("housekeepingStatusCode")}>
+            <Field label="Governança" error={err("housekeepingStatusCode")}>
               <Select
                 {...form.register("housekeepingStatusCode")}
                 disabled={hkStatusesQ.isLoading || hkStatusesQ.isError}
@@ -259,74 +321,75 @@ export function QuartoForm({
         </div>
       </div>
 
-      {/* BLOCO 4 – Comodidades do TIPO selecionado */}
+      {/* COMODIDADES */}
       <div className="surface-2">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm font-semibold">Comodidades do tipo de quarto</div>
-            <div className="text-[12px] opacity-70">
-              As comodidades são cadastradas por pousada e vinculadas ao tipo.
+            <div className="text-sm font-semibold mb-1">Comodidades</div>
+            <div className="text-[12px] opacity-70 -mt-1">
+              Herdadas do tipo + específicas deste quarto.
             </div>
           </div>
-          <Button
-            type="button"
-            onClick={openAmenityModal}
-            disabled={!selectedRoomType}
-          >
-            Adicionar comodidade
+
+          <Button type="button" onClick={openAmenityModal}>
+            Adicionar
           </Button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {chips.length === 0 ? (
-            <div className="text-sm opacity-70">Nenhuma comodidade vinculada a este tipo.</div>
-          ) : (
-            chips.map((am) => (
-              <span
-                key={am.id}
-                className="inline-flex items-center rounded-full border border-gray-200 dark:border-white/10 px-3 py-1 text-xs"
-              >
-                {am.name}
+        {/* Herdadas */}
+        <div className="mt-3">
+          <div className="text-xs opacity-70 mb-1">Herdadas do tipo</div>
+          <div className="flex flex-wrap gap-2">
+            {inherited.length === 0 ? (
+              <span className="text-sm opacity-70">Nenhuma vinculada ao tipo.</span>
+            ) : (
+              inherited.map((am) => <Chip key={am.id} label={am.name} />)
+            )}
+          </div>
+        </div>
+
+        {/* Específicas */}
+        <div className="mt-4">
+          <div className="text-xs opacity-70 mb-1">
+            {mode === "edit" ? "Específicas do quarto" : "Selecionadas para este quarto (rascunho)"}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(mode === "edit" ? roomAmenities : stagedAmenities).length === 0 ? (
+              <span className="text-sm opacity-70">
+                {mode === "edit" ? "Nenhuma ainda." : "Nenhuma selecionada."}
               </span>
-            ))
-          )}
+            ) : (
+              (mode === "edit" ? roomAmenities : stagedAmenities).map((am) => (
+                <Chip
+                  key={am.id}
+                  label={am.name}
+                  onRemove={() => handleRemoveRoomAmenity(am.id)}
+                />
+              ))
+            )}
+          </div>
         </div>
       </div>
 
-      {/* BLOCO 5 – Descrição / Amenidades (texto livre) */}
+      {/* DESCRIÇÃO */}
       <div className="surface-2">
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-12 lg:col-span-7">
-            <Field label="Descrição (opcional)">
-              <Textarea
-                rows={3}
-                placeholder="Informações adicionais (vista, observações, etc.)"
-                {...form.register("description")}
-              />
-            </Field>
-          </div>
-
-          <div className="col-span-12 lg:col-span-5">
-            <Field label="Amenidades (texto livre)">
-              <Input
-                placeholder="Ar-condicionado, Wi-Fi, TV, Cofre…"
-                {...form.register("amenities")}
-              />
-              <div className="text-[11px] opacity-70 mt-1">
-                Campo apenas informativo (não vincula à API).
-              </div>
-            </Field>
-          </div>
-        </div>
+        <Field label="Descrição (opcional)">
+          <Textarea
+            rows={3}
+            placeholder="Informações adicionais (vista, observações, etc.)"
+            {...form.register("description")}
+          />
+        </Field>
       </div>
 
-      {/* ===== Modal: Adicionar Comodidade ===== */}
+      {/* MODAL */}
       {amenityModal && (
         <ModalBase open={amenityModal} onClose={() => setAmenityModal(false)}>
           <div className="w-[min(92vw,520px)] rounded-2xl bg-white dark:bg-[#0F172A] border border-gray-200/70 dark:border-white/10 shadow-soft">
-            {/* Header */}
             <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-200/70 dark:border-white/10">
-              <h3 className="text-sm font-semibold">Adicionar comodidade</h3>
+              <h3 className="text-sm font-semibold">
+                {mode === "edit" ? "Adicionar comodidade ao quarto" : "Selecionar comodidade para este quarto"}
+              </h3>
               <button
                 type="button"
                 onClick={() => setAmenityModal(false)}
@@ -337,7 +400,6 @@ export function QuartoForm({
               </button>
             </div>
 
-            {/* Body */}
             <AmenityModalContent
               loading={loadingAm}
               amenities={amenities}
@@ -351,7 +413,52 @@ export function QuartoForm({
   );
 }
 
-/** Conteúdo do modal (criar OU anexar existente) */
+/* ---------- UI helpers ---------- */
+function Chip({ label, onRemove }: { label: string; onRemove?: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-white/10 px-3 py-1 text-xs">
+      {label}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="ml-1 rounded-full px-1.5 py-0.5 hover:bg-black/10 dark:hover:bg-white/10"
+          aria-label="Remover"
+          title="Remover"
+        >
+          ✕
+        </button>
+      )}
+    </span>
+  );
+}
+
+function CapacityBadge({ typeBase, typeMax }: { typeBase?: number; typeMax?: number }) {
+  if (!typeBase && !typeMax) return null;
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full border border-gray-200/70 dark:border-white/10 px-3 py-1 text-[11px]">
+      <span className="opacity-70">Padrão do tipo</span>
+      {typeof typeBase === "number" ? <span>Base: {typeBase}</span> : null}
+      <span className="opacity-40">•</span>
+      {typeof typeMax === "number" ? <span>Máx.: {typeMax}</span> : null}
+    </div>
+  );
+}
+
+function EffectiveCapacity({ base, max }: { base?: number; max?: number }) {
+  if (!base && !max) return null;
+  return (
+    <div className="rounded-xl border border-gray-200/70 dark:border-white/10 px-3 py-2 text-xs">
+      <div className="opacity-70">Capacidade efetiva</div>
+      <div className="mt-0.5 font-medium">
+        {typeof base === "number" ? `Base ${base}` : "—"} <span className="opacity-40">•</span>{" "}
+        {typeof max === "number" ? `Máx. ${max}` : "—"}
+      </div>
+    </div>
+  );
+}
+
+/** Conteúdo do modal */
 function AmenityModalContent({
   loading,
   amenities,
@@ -369,18 +476,22 @@ function AmenityModalContent({
 
   return (
     <div className="p-4 space-y-4">
-      <div className="flex gap-3">
+      <div className="flex gap-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] p-1">
         <button
           type="button"
           onClick={() => setMode("existing")}
-          className={`px-3 py-1 rounded-full text-sm border ${mode === "existing" ? "bg-black/5 dark:bg-white/10" : ""}`}
+          className={`flex-1 px-3 py-1 rounded-lg text-sm ${
+            mode === "existing" ? "bg-white dark:bg-[#0F172A] shadow-soft" : "opacity-70"
+          }`}
         >
           Usar existente
         </button>
         <button
           type="button"
           onClick={() => setMode("new")}
-          className={`px-3 py-1 rounded-full text-sm border ${mode === "new" ? "bg-black/5 dark:bg-white/10" : ""}`}
+          className={`flex-1 px-3 py-1 rounded-lg text-sm ${
+            mode === "new" ? "bg-white dark:bg-[#0F172A] shadow-soft" : "opacity-70"
+          }`}
         >
           Criar nova
         </button>
@@ -396,7 +507,9 @@ function AmenityModalContent({
           >
             <option value="">{loading ? "Carregando…" : "Selecione…"}</option>
             {amenities.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
             ))}
           </select>
         </Field>
@@ -413,7 +526,9 @@ function AmenityModalContent({
       )}
 
       <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button>
+        <Button type="button" variant="ghost" onClick={onClose}>
+          Cancelar
+        </Button>
         <Button
           type="button"
           onClick={() =>
@@ -425,7 +540,7 @@ function AmenityModalContent({
           }
           disabled={loading || (mode === "existing" ? !existingId : !newName.trim())}
         >
-          {mode === "existing" ? "Vincular" : "Criar e vincular"}
+          Adicionar
         </Button>
       </div>
     </div>

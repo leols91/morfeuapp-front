@@ -102,12 +102,12 @@ export default function EditarAcomodacaoPage() {
     form.reset({
       roomTypeId: q.roomTypeId ?? "",
       code: q.code ?? "",
-      roomName: "", // apenas UI
+      roomName: q.name ?? "",
       floor: q.floor ?? "",
       description: q.description ?? "",
       roomStatusCode: q.roomStatusCode ?? "",
       housekeepingStatusCode: q.housekeepingStatusCode ?? "",
-      amenities: "", // apenas UI
+      amenities: "",
       baseOccupancy: q.baseOccupancy ?? undefined,
       maxOccupancy: q.maxOccupancy ?? undefined,
     });
@@ -115,7 +115,6 @@ export default function EditarAcomodacaoPage() {
 
   const salvar = useMutation({
     mutationFn: async (raw: FormInput) => {
-      // normaliza NaN -> undefined
       const v: FormOutput = schema.parse({
         ...raw,
         baseOccupancy:
@@ -131,12 +130,11 @@ export default function EditarAcomodacaoPage() {
       return await updateQuarto(id, {
         roomTypeId: v.roomTypeId,
         code: v.code,
+        name: v.roomName || null,                 // ← envia o nome amigável
         floor: v.floor ? v.floor : null,
         description: v.description ? v.description : null,
         roomStatusCode: v.roomStatusCode,
         housekeepingStatusCode: v.housekeepingStatusCode,
-
-        // null => backend usa padrão
         baseOccupancy: v.baseOccupancy ?? null,
         maxOccupancy: v.maxOccupancy ?? null,
       });
@@ -178,6 +176,7 @@ export default function EditarAcomodacaoPage() {
               roomStatusesQ={roomStatusesQ}
               hkStatusesQ={hkStatusesQ}
               mode="edit"
+              quartoId={id}                 // ← necessário para gerenciar comodidades no edit
             />
 
             {/* Ações */}

@@ -3,7 +3,9 @@ export type AcomodacaoType = "room" | "bed";
 
 export type AcomodacaoDTO = {
   id: string;
-  name: string;
+  code: string;                 // código/número
+  name: string;                 // nome amigável (pode vir vazio)
+  roomTypeName?: string | null; // ← NOVO: rótulo do tipo (RoomType.name)
   type: AcomodacaoType;
   status: AcomodacaoStatus;
   capacity?: number | null;
@@ -11,7 +13,6 @@ export type AcomodacaoDTO = {
   description?: string | null;
   amenities?: string[] | null;
   externalCode?: string | null;
-  // extras futuros: floor, number, roomGroupId, bedCount, etc.
 };
 
 export type ListAcomodacoesParams = {
@@ -22,4 +23,37 @@ export type ListAcomodacoesParams = {
   capMax?: number;
   priceMin?: number;
   priceMax?: number;
+};
+
+export type CreateQuartoPayload = {
+  roomTypeId: string;
+  code: string;
+  floor?: string | null;
+  description?: string | null;
+
+  // novo: persistir o "Nome (opcional)"
+  displayName?: string | null;
+
+  // overrides (opcionais)
+  baseOccupancy?: number | null;
+  maxOccupancy?: number | null;
+
+  roomStatusCode?: string;
+  housekeepingStatusCode?: string;
+};
+
+export type UpdateQuartoPayload = {
+  roomTypeId: string;
+  code: string;
+  floor?: string | null;
+  description?: string | null;
+
+  // também permitir editar o nome amigável
+  displayName?: string | null;
+
+  roomStatusCode: string;
+  housekeepingStatusCode: string;
+
+  baseOccupancy?: number | null;
+  maxOccupancy?: number | null;
 };

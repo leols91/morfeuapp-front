@@ -46,6 +46,7 @@ export default function AcomodacoesPage() {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     staleTime: 30_000,
+    refetchOnMount: "always",
   });
 
   // dashboard simples

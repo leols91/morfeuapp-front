@@ -1,91 +1,97 @@
 "use client";
-
 import * as React from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/form/Field";
+import { getActivePousadaId } from "@/lib/tenants";
 import {
   listAmenities,
   deleteAmenity,
   type AmenityDTO,
 } from "@/services/acomodacoes";
-import { getActivePousadaId } from "@/lib/tenants";
-import AcomodacoesMenu from "@/components/acomodacoes/AcomodacoesMenu";
 import toast from "react-hot-toast";
 
-export default function AmenidadesListPage() {
-  const [pousadaId, setPousadaId] = React.useState<string | null>(null);
+export default function AmenidadesPage() {
+  const qc = useQueryClient();
+  const pousadaId = getActivePousadaId();
+
   const [q, setQ] = React.useState("");
 
-  React.useEffect(() => setPousadaId(getActivePousadaId()), []);
-
-  const amenitiesQ = useQuery<AmenityDTO[]>({
+  const amenidadesQ = useQuery<AmenityDTO[]>({
     queryKey: ["amenities", pousadaId],
-    queryFn: () => listAmenities(pousadaId ?? ""),
+    queryFn: async () => {
+      if (!pousadaId) return [];
+      const list = await listAmenities(pousadaId);
+      return list;
+    },
     enabled: !!pousadaId,
     refetchOnWindowFocus: false,
   });
 
-  const del = useMutation({
-    mutationFn: (id: string) => deleteAmenity(id),
+  const excluir = useMutation({
+    mutationFn: async (id: string) => {
+      await deleteAmenity(id);
+    },
     onSuccess: () => {
       toast.success("Comodidade excluída.");
-      amenitiesQ.refetch();
+      qc.invalidateQueries({ queryKey: ["amenities", pousadaId] });
     },
-    onError: () => toast.error("Falha ao excluir."),
+    onError: () => toast.error("Falha ao excluir comodidade."),
   });
 
-  const items = (amenitiesQ.data ?? []).filter((a) =>
-    a.name.toLowerCase().includes(q.toLowerCase())
-  );
+  const filtered = React.useMemo(() => {
+    const items = amenidadesQ.data ?? [];
+    if (!q) return items;
+    const s = q.toLowerCase();
+    return items.filter((a) => a.name.toLowerCase().includes(s));
+  }, [amenidadesQ.data, q]);
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center">
+      <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Comodidades</h1>
-        <AcomodacoesMenu />
-      </div>
-
-      <div className="surface-2 flex items-end justify-between gap-3">
-        <div className="max-w-sm">
-          <Field label="Buscar">
-            <Input
-              placeholder="Ex.: Ar-condicionado"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </Field>
-        </div>
         <Link href={"/acomodacoes/amenidades/nova" as Route}>
           <Button>Nova comodidade</Button>
         </Link>
       </div>
 
+      <div className="surface-2">
+        <div className="grid grid-cols-12 gap-3 items-end">
+          <div className="col-span-12 md:col-span-4">
+            <Field label="Buscar">
+              <Input
+                placeholder="Nome…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </Field>
+          </div>
+        </div>
+      </div>
+
       <div className="surface">
-        {amenitiesQ.isLoading ? (
+        {amenidadesQ.isLoading ? (
           <div className="p-6 text-sm opacity-70">Carregando…</div>
-        ) : items.length === 0 ? (
-          <div className="p-6 text-sm opacity-70">Nenhuma comodidade.</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-6 text-sm opacity-70">Nenhuma comodidade encontrada.</div>
         ) : (
-          <ul className="divide-y divide-gray-100/70 dark:divide-white/10">
-            {items.map((a) => (
+          <ul className="divide-y divide-gray-100 dark:divide-white/10">
+            {filtered.map((a) => (
               <li
                 key={a.id}
                 className="flex items-center justify-between p-3 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
               >
-                <div className="font-medium">{a.name}</div>
-                <div className="flex gap-2">
-                  <Link href={`/acomodacoes/amenidades/${a.id}` as Route}>
-                    <Button variant="outline" size="sm">Editar</Button>
+                <div className="text-sm">{a.name}</div>
+                <div className="flex items-center gap-2">
+                  <Link href={`/acomodacoes/amenidades/${a.id}/editar` as Route}>
+                    <Button size="sm" variant="outline">Editar</Button>
                   </Link>
                   <Button
-                    variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      if (confirm(`Excluir "${a.name}"?`)) del.mutate(a.id);
-                    }}
+                    variant="ghost"
+                    onClick={() => excluir.mutate(a.id)}
                   >
                     Excluir
                   </Button>

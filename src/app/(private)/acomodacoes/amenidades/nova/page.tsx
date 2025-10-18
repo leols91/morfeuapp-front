@@ -1,79 +1,62 @@
 "use client";
-
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/form/Field";
-import { createAmenity } from "@/services/acomodacoes";
 import { getActivePousadaId } from "@/lib/tenants";
-import toast from "react-hot-toast";
-
-const schema = z.object({
-  name: z.string().min(1, "Informe o nome"),
-});
-
-type FormInput = z.input<typeof schema>;
-type FormOutput = z.infer<typeof schema>;
+import { createAmenity } from "@/services/acomodacoes";
 
 export default function NovaAmenidadePage() {
   const router = useRouter();
-  const [pousadaId, setPousadaId] = React.useState<string | null>(null);
-  React.useEffect(() => setPousadaId(getActivePousadaId()), []);
-
-  const form = useForm<FormInput>({
-    resolver: zodResolver(schema),
-    defaultValues: { name: "" },
-  });
+  const pousadaId = getActivePousadaId();
+  const [name, setName] = React.useState("");
 
   const criar = useMutation({
-    mutationFn: async (raw: FormInput) => {
-      const v: FormOutput = schema.parse(raw);
-      if (!pousadaId) throw new Error("Selecione uma pousada.");
-      return createAmenity(pousadaId, v.name);
+    mutationFn: async () => {
+      if (!pousadaId) throw new Error("Nenhuma pousada ativa.");
+      if (!name.trim()) throw new Error("Informe o nome.");
+      await createAmenity(pousadaId, name.trim());
     },
     onSuccess: () => {
       toast.success("Comodidade criada!");
       router.replace("/acomodacoes/amenidades");
     },
-    onError: (e: any) => {
-      toast.error(e?.response?.data?.message ?? "Falha ao criar.");
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message ?? err?.message ?? "Falha ao criar comodidade.");
     },
   });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Nova comodidade</h1>
       </div>
 
-      <div className="surface-2 max-w-lg">
-        <form
-          onSubmit={form.handleSubmit((v) => criar.mutate(v))}
-          className="grid grid-cols-12 gap-4"
-        >
-          <div className="col-span-12">
-            <Field label="Nome" error={form.formState.errors.name?.message}>
-              <Input placeholder="Ex.: Ar-condicionado" {...form.register("name")} />
+      <div className="surface-2">
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-12 md:col-span-6">
+            <Field label="Nome">
+              <Input
+                placeholder="Ex.: Banheiro privativo"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </Field>
           </div>
+        </div>
+      </div>
 
-          <div className="col-span-12 flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => router.back()}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={criar.isPending || !pousadaId}>
-              {criar.isPending ? "Salvando…" : "Criar"}
-            </Button>
-          </div>
-        </form>
+      <div className="surface-2">
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => router.back()}>
+            Cancelar
+          </Button>
+          <Button onClick={() => criar.mutate()} disabled={criar.isPending || !pousadaId}>
+            {criar.isPending ? "Salvando…" : "Criar"}
+          </Button>
+        </div>
       </div>
     </div>
   );

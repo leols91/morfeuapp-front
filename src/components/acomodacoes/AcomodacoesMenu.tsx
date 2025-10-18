@@ -19,7 +19,7 @@ const SECTIONS: Section[] = [
     title: "Cadastros",
     items: [
       { label: "Tipos de quarto", href: "/acomodacoes/tipos" },
-      { label: "Amenidades", href: "/acomodacoes/amenidades" },
+      { label: "Comodidades", href: "/acomodacoes/amenidades" },
     ],
   },
 ];

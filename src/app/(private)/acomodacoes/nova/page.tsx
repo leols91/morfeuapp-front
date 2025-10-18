@@ -17,24 +17,20 @@ import {
   listRoomStatuses,
   listHousekeepingStatuses,
   createQuarto,
+  addAmenityToRoom,
 } from "@/services/acomodacoes";
 import { getActivePousadaId } from "@/lib/tenants";
 
-/** =====================
- *  Validação (Quarto)
- *  Obs.: permitir vazio (usa padrão) e evitar enviar NaN
- * ===================== */
+/** Validação */
 const schema = z.object({
   roomTypeId: z.string().min(1, "Selecione o tipo de quarto"),
   code: z.string().min(1, "Informe o código/número do quarto"),
-  roomName: z.string().optional(), // apenas UI
+  roomName: z.string().optional(),
   floor: z.string().optional(),
   description: z.string().optional(),
   roomStatusCode: z.string().min(1, "Selecione o status do quarto"),
   housekeepingStatusCode: z.string().min(1, "Selecione o status de governança"),
-  amenities: z.string().optional(), // apenas UI
-
-  // overrides (opcionais): se vazio => usa padrão do RoomType
+  amenities: z.string().optional(),
   baseOccupancy: z.union([z.number().int().positive().min(1), z.nan(), z.undefined()]).optional(),
   maxOccupancy: z.union([z.number().int().positive().min(1), z.nan(), z.undefined()]).optional(),
 });
@@ -45,26 +41,20 @@ type FormOutput = z.infer<typeof schema>;
 export default function NovaAcomodacaoPage() {
   const router = useRouter();
 
-  // 🏨 Pousada ativa (localStorage)
   const [pousadaId, setPousadaId] = React.useState<string | null>(null);
-  React.useEffect(() => {
-    setPousadaId(getActivePousadaId());
-  }, []);
+  React.useEffect(() => setPousadaId(getActivePousadaId()), []);
 
-  // Tipos de quarto – escopado por pousada
   const roomTypesQ = useQuery<RoomType[]>({
     queryKey: ["roomTypes", pousadaId],
     queryFn: () => listRoomTypes(pousadaId ?? undefined),
     enabled: !!pousadaId,
     refetchOnWindowFocus: false,
   });
-
   const roomStatusesQ = useQuery<StatusOpt[]>({
     queryKey: ["roomStatuses"],
     queryFn: listRoomStatuses,
     refetchOnWindowFocus: false,
   });
-
   const hkStatusesQ = useQuery<StatusOpt[]>({
     queryKey: ["housekeepingStatuses"],
     queryFn: listHousekeepingStatuses,
@@ -87,11 +77,13 @@ export default function NovaAcomodacaoPage() {
     },
   });
 
+  // IDs de amenities “staged” (antes de existir o quarto)
+  const [stagedAmenities, setStagedAmenities] = React.useState<string[]>([]);
+
   const criar = useMutation({
     mutationFn: async (raw: FormInput) => {
       if (!pousadaId) throw new Error("Nenhuma pousada selecionada.");
 
-      // normaliza NaN -> undefined
       const v: FormOutput = schema.parse({
         ...raw,
         baseOccupancy:
@@ -104,23 +96,38 @@ export default function NovaAcomodacaoPage() {
             : raw.maxOccupancy,
       });
 
-      // segurança: confere se roomType pertence à pousada atual
       const ok = (roomTypesQ.data ?? []).some((t) => t.id === v.roomTypeId);
       if (!ok) throw new Error("O tipo selecionado não pertence à pousada ativa.");
 
-      return await createQuarto(pousadaId, {
+      // 1) cria o quarto
+      const res = await createQuarto(pousadaId, {
         roomTypeId: v.roomTypeId,
         code: v.code,
+        name: (v.roomName || "").trim() || null,
         floor: v.floor || null,
         description: v.description || null,
-
-        // overrides: null => backend usa padrão do RoomType
         baseOccupancy: v.baseOccupancy ?? null,
         maxOccupancy: v.maxOccupancy ?? null,
-
         roomStatusCode: v.roomStatusCode,
         housekeepingStatusCode: v.housekeepingStatusCode,
       });
+
+      const newId = res?.id;
+      if (newId && stagedAmenities.length > 0) {
+        // 2) vincula amenities staged ao novo quarto
+        for (const amId of stagedAmenities) {
+          try {
+            await addAmenityToRoom(newId, amId);
+          } catch (e: any) {
+            toast.error(
+              e?.response?.data?.message ??
+                `Falha ao vincular a comodidade (${amId}). Você pode tentar novamente na edição.`
+            );
+          }
+        }
+      }
+
+      return res;
     },
     onSuccess: () => {
       toast.success("Quarto criado com sucesso!");
@@ -151,10 +158,9 @@ export default function NovaAcomodacaoPage() {
             roomStatusesQ={roomStatusesQ}
             hkStatusesQ={hkStatusesQ}
             mode="create"
-            refetchRoomTypes={roomTypesQ.refetch}
+            onStagedAmenitiesChange={setStagedAmenities}
           />
 
-          {/* Ações */}
           <div className="surface-2">
             <div className="flex items-center justify-end gap-2">
               <Button type="button" variant="ghost" onClick={() => router.back()}>
