@@ -13,9 +13,15 @@ import { listMovementTypes, listProdutos, createStockMovement } from "@/services
 
 const schema = z.object({
   produtoId: z.string().min(1, "Selecione o produto"),
-  typeCode: z.string().min(1, "Selecione o tipo"),
+  // somente entrada/saída
+  typeCode: z.enum(["in", "out"], { required_error: "Selecione o tipo" }),
   quantity: z.coerce.number().positive("Qtd deve ser > 0"),
-  unitCost: z.coerce.number().optional().or(z.nan()).transform((v) => (Number.isNaN(v) ? undefined : v)),
+  unitCost: z
+    .coerce
+    .number()
+    .optional()
+    .or(z.nan())
+    .transform((v) => (Number.isNaN(v) ? undefined : v)),
   note: z.string().optional().or(z.literal("")),
 });
 type FormInput = z.input<typeof schema>;
@@ -28,11 +34,12 @@ export default function NovaMovimentacaoPage() {
   const produtosQ = useQuery({
     queryKey: ["produtos_for_mov"],
     queryFn: () => listProdutos({}),
+    refetchOnWindowFocus: false,
   });
 
   const form = useForm<FormInput>({
     resolver: zodResolver(schema),
-    defaultValues: { produtoId: "", typeCode: "", quantity: 1, unitCost: undefined, note: "" },
+    defaultValues: { produtoId: "", typeCode: "" as unknown as "in" | "out", quantity: 1, unitCost: undefined, note: "" },
   });
 
   const criar = useMutation({
@@ -62,6 +69,7 @@ export default function NovaMovimentacaoPage() {
       <form onSubmit={form.handleSubmit((v) => criar.mutate(v))} className="space-y-4">
         <div className="surface-2">
           <div className="grid grid-cols-12 gap-4">
+            {/* Produto */}
             <div className="col-span-12 md:col-span-6">
               <Field label="Produto" error={form.formState.errors.produtoId?.message}>
                 <Select
@@ -80,30 +88,42 @@ export default function NovaMovimentacaoPage() {
               </Field>
             </div>
 
+            {/* Tipo (apenas Entrada/Saída) */}
             <div className="col-span-12 md:col-span-6">
               <Field label="Tipo" error={form.formState.errors.typeCode?.message}>
                 <Select
                   {...form.register("typeCode")}
                   disabled={typesQ.isLoading || typesQ.isError}
                 >
-                  <option value="">{typesQ.isLoading ? "Carregando…" : "Selecione…"}</option>
-                  {typesQ.data?.map((t) => (
-                    <option key={t.code} value={t.code}>{t.description}</option>
-                  ))}
+                  <option value="">
+                    {typesQ.isLoading ? "Carregando…" : "Selecione…"}
+                  </option>
+                  {(typesQ.data ?? [])
+                    .filter((t) => t.code === "in" || t.code === "out")
+                    .map((t) => (
+                      <option key={t.code} value={t.code}>
+                        {t.description}
+                      </option>
+                    ))}
                 </Select>
               </Field>
             </div>
 
+            {/* Quantidade */}
             <div className="col-span-6 md:col-span-4">
               <Field label="Quantidade" error={form.formState.errors.quantity?.message}>
                 <Input type="number" step="0.001" {...form.register("quantity")} />
               </Field>
             </div>
+
+            {/* Custo unitário (opcional) */}
             <div className="col-span-6 md:col-span-4">
               <Field label="Custo unitário (opcional)">
                 <Input type="number" step="0.01" {...form.register("unitCost")} />
               </Field>
             </div>
+
+            {/* Observações */}
             <div className="col-span-12 md:col-span-4">
               <Field label="Observações (opcional)">
                 <Textarea rows={2} {...form.register("note")} />
@@ -114,7 +134,9 @@ export default function NovaMovimentacaoPage() {
 
         <div className="surface-2">
           <div className="flex items-center justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => router.back()}>Cancelar</Button>
+            <Button type="button" variant="ghost" onClick={() => router.back()}>
+              Cancelar
+            </Button>
             <Button type="submit" disabled={criar.isPending}>
               {criar.isPending ? "Salvando…" : "Registrar"}
             </Button>

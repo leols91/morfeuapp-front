@@ -13,6 +13,7 @@ import {
   type ProdutoDTO,
 } from "@/services/estoque";
 import { ProdutosTable } from "@/components/estoque/ProdutosTable";
+import EstoqueMenu from "@/components/estoque/EstoqueMenu";
 
 export default function EstoquePage() {
   const initial: ListProdutosParams = { q: "", categoryId: "all", stockControl: "all" };
@@ -50,15 +51,25 @@ export default function EstoquePage() {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Estoque</h1>
+        <div className="flex items-center">
+          <h1 className="text-xl font-semibold">Produtos / Estoque</h1>
+          <EstoqueMenu />
+        </div>
         <div className="flex gap-2">
           <Link href={"/estoque/compras/nova" as Route}>
             <Button>Nova compra</Button>
           </Link>
-          <Link href={"/estoque/movimentacoes" as Route}><Button variant="outline">Movimentações</Button></Link>
-          <Link href={"/estoque/produtos/novo" as Route}><Button>Novo produto</Button></Link>
+          <Link href={"/estoque/movimentacoes" as Route}>
+            <Button variant="outline">Movimentações</Button>
+          </Link>
+          <Link href={"/estoque/produtos/novo" as Route}>
+            <Button>Novo produto</Button>
+          </Link>
         </div>
       </div>
+
+
+      
 
       {/* Mini dashboard */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

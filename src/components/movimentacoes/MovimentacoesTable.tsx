@@ -2,8 +2,13 @@
 import * as React from "react";
 import { cn } from "@/components/ui/cn";
 import { Button } from "@/components/ui/Button";
-import { fmtNumber, fmtDateTime, money, Th, Td } from "./utils";
-import type { MovementMaybePurchase } from "@/app/(private)/estoque/movimentacoes/page";
+import { fmtNumber, fmtDateTime, fmtMoney } from "./utils";
+import type { StockMovementDTO } from "@/services/estoque";
+
+type MovementMaybePurchase = StockMovementDTO & {
+  purchaseId?: string;
+  purchaseSummary?: { supplierName?: string | null };
+};
 
 type Props = {
   rows: MovementMaybePurchase[];
@@ -11,7 +16,7 @@ type Props = {
 };
 
 export default function MovimentacoesTable({ rows, onOpenPurchase }: Props) {
-  if (rows.length === 0)
+  if (!rows || rows.length === 0)
     return (
       <div className="surface mt-3 p-8 text-center opacity-70 border border-dashed rounded-2xl">
         Nenhuma movimentação encontrada
@@ -36,40 +41,50 @@ export default function MovimentacoesTable({ rows, onOpenPurchase }: Props) {
           <tbody className="divide-y divide-gray-100 dark:divide-white/10">
             {rows.map((m) => {
               const isPurchase = Boolean(m.purchaseId);
+
+              // Texto principal da coluna: "Compra" quando veio de compra; senão o nome do produto (fallbacks)
+              const mainLabel =
+                isPurchase
+                  ? "Compra"
+                  : m.produto?.name && m.produto.name.trim() !== ""
+                  ? m.produto.name
+                  : m.typeCode === "out"
+                  ? "Venda"
+                  : "Entrada";
+
               return (
                 <tr key={m.id} className="hover:bg-black/5 dark:hover:bg-white/5">
                   <Td className="whitespace-nowrap">{fmtDateTime(m.createdAt)}</Td>
+
+                  {/* Produto / Compra */}
                   <Td className="truncate max-w-[340px]">
-                    {isPurchase ? (
-                      <div className="flex flex-col">
-                        <span className="font-medium">Compra #{m.purchaseId?.slice(0, 8)}</span>
-                        {m.purchaseSummary?.supplierName && (
-                          <span className="text-[11px] opacity-70">
-                            Fornecedor: {m.purchaseSummary.supplierName}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <>
-                        {m.produto?.name ?? m.produtoId}{" "}
-                        {m.produto?.sku ? `• ${m.produto.sku}` : ""}
-                      </>
-                    )}
+                    <div className="flex flex-col">
+                      <span className="font-medium">{mainLabel}</span>
+                      {isPurchase && m.purchaseSummary?.supplierName && (
+                        <span className="text-[11px] opacity-70">
+                          Fornecedor: {m.purchaseSummary.supplierName}
+                        </span>
+                      )}
+                    </div>
                   </Td>
+
+                  {/* Tipo com cor */}
                   <Td
                     className={cn(
-                      isPurchase
-                        ? "text-emerald-600 dark:text-emerald-300"
-                        : m.typeCode === "in"
+                      m.typeCode === "in"
                         ? "text-emerald-600 dark:text-emerald-300"
                         : "text-rose-600 dark:text-rose-300"
                     )}
                   >
-                    {isPurchase ? "Compra (Entrada)" : m.typeCode === "in" ? "Entrada" : "Saída"}
+                    {m.typeCode === "in" ? "Entrada" : "Saída"}
                   </Td>
+
+                  {/* Quantidade / Custo / Observações */}
                   <Td className="text-right tabular-nums">{fmtNumber(m.quantity)}</Td>
-                  <Td className="text-right tabular-nums">{money(m.unitCost)}</Td>
+                  <Td className="text-right tabular-nums">{fmtMoney(m.unitCost)}</Td>
                   <Td className="truncate max-w-[300px]">{m.note ?? "—"}</Td>
+
+                  {/* Ações */}
                   <Td className="text-right">
                     {isPurchase ? (
                       <Button
@@ -91,4 +106,21 @@ export default function MovimentacoesTable({ rows, onOpenPurchase }: Props) {
       </div>
     </div>
   );
+}
+
+/* Helpers locais de célula/thead para manter o estilo consistente */
+function Th(props: React.ThHTMLAttributes<HTMLTableCellElement>) {
+  return (
+    <th
+      {...props}
+      className={cn(
+        "px-4 py-3 text-xs font-semibold uppercase tracking-wide opacity-70",
+        props.className
+      )}
+    />
+  );
+}
+
+function Td(props: React.TdHTMLAttributes<HTMLTableCellElement>) {
+  return <td {...props} className={cn("px-4 py-3 align-middle", props.className)} />;
 }
